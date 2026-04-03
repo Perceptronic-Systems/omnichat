@@ -9,6 +9,7 @@ license=('MIT')
 depends=('gtkmm-4.0' 'cpr' 'nlohmann-json' 'python' 'python-pip')
 makedepends=('git' 'gcc' 'make')
 optdepends=()
+options=('!strip' '!debug')
 conflicts=()
 install=
 source=("omnichat::git+$url")
@@ -24,8 +25,8 @@ package() {
 	install -Dm755 ./omnichat "$pkgdir/usr/bin/omnichat"
 	mkdir -p "$pkgdir/usr/lib/omnichat/backend"
 	cp -r ./backend/* "$pkgdir/usr/lib/omnichat/backend"
-	python -m venv "$pkgdir/usr/lib/omnichat/venv"
-	"$pkgdir/usr/lib/omnichat/venv/bin/pip" install numpy ollama langchain-ollama langchain-chroma chromadb flask flask-cors pypdf beautifulsoup4
+	python -m venv "$pkgdir/usr/lib/omnichat/backend/venv"
+	"$pkgdir/usr/lib/omnichat/backend/venv/bin/pip" install -q --no-cache-dir numpy ollama langchain-ollama langchain-chroma chromadb flask flask-cors pypdf beautifulsoup4
 	chmod +x "$pkgdir/usr/lib/omnichat/backend/main.py"
 	install -Dm644 ./frontend/default-stylesheet.css "$pkgdir/usr/share/omnichat/stylesheet.css"
 	install -Dm644 ./README.md "$pkgdir/usr/share/doc/omnichat.md"
