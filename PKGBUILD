@@ -6,9 +6,7 @@ pkgdesc="A minimal chat interface for LLMs"
 arch=('x86_64')
 url="https://github.com/Perceptronic-Systems/omnichat"
 license=('MIT')
-depends=('gtkmm-4.0' 'cpr' 'nlohmann-json' 'python' 'python-flask' 'python-flask-cors'
-'python-pypdf' 'python-ollama' 'python-langchain-ollama' 'python-langchain-chroma'
-'python-chromadb' 'python-requests' 'python-numpy')
+depends=('gtkmm-4.0' 'cpr' 'nlohmann-json' 'python' 'python-pip')
 makedepends=('git' 'gcc' 'make')
 optdepends=()
 conflicts=()
@@ -26,6 +24,8 @@ package() {
 	install -Dm755 ./omnichat "$pkgdir/usr/bin/omnichat"
 	mkdir -p "$pkgdir/usr/lib/omnichat/backend"
 	cp -r ./backend/* "$pkgdir/usr/lib/omnichat/backend"
+	python -m venv "/usr/lib/omnichat/venv"
+	"usr/lib/omnichat/venv/bin/pip" install numpy ollama langchain-ollama langchain-chroma chromadb flask flask-cors pypdf beautifulsoup4
 	chmod +x "$pkgdir/usr/lib/omnichat/backend/main.py"
 	install -Dm644 ./frontend/default-stylesheet.css "$pkgdir/usr/share/omnichat/stylesheet.css"
 	install -Dm644 ./README.md "$pkgdir/usr/share/doc/omnichat.md"

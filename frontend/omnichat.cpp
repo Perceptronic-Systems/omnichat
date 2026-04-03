@@ -196,7 +196,7 @@ int main(int argc, char* argv[]) {
         });
         return app->run(1, argv);
     } else if (argc >= 3 && std::string(argv[1]) == "backend" && std::string(argv[2]) == "start") {
-        system("python /usr/lib/omnichat/backend/main.py");
+        system("/usr/lib/omnichat/backend/venv/bin/python /usr/lib/omnichat/backend/main.py");
         return 0;
     } else if (argc == 1) {
         std::cout << "Welcome to omnichat! Use `omnichat backend start` to launch the API and `omnichat chat` to launch the GUI." << std::endl;
