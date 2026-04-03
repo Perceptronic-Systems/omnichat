@@ -29,6 +29,8 @@ package() {
 	"$pkgdir/usr/lib/omnichat/backend/venv/bin/pip" install -q --no-cache-dir numpy ollama langchain-ollama langchain-chroma langchain langchain-core langchain-community langchain-text-splitters pydantic chromadb flask[async] flask-cors pypdf beautifulsoup4
 	chmod +x "$pkgdir/usr/lib/omnichat/backend/main.py"
 	mkdir -p "$pkgdir/var/lib/omnichat/persistent/knowledgebase"
+	chown -R $USER:$USER /var/lib/omnichat/persistent/*
+	chmod -R 775 /var/lib/omnichat/persistent/*
 	install -Dm644 ./frontend/default-stylesheet.css "$pkgdir/usr/share/omnichat/stylesheet.css"
 	install -Dm644 ./README.md "$pkgdir/usr/share/doc/omnichat.md"
 	install -Dm644 ./LICENSE "$pkgdir/usr/share/licenses/omnichat/LICENSE"
