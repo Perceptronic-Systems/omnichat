@@ -17,9 +17,9 @@ class LLM():
         self.messages = []
         self.call_index = 0
         self.available_tools: Dict[str, Callable] = {
-            #'search_for_file': tools.search_for_file,
-            #'list_files': tools.list_files,
-            #'read_file': tools.read_file,
+            'search_for_file': tools.search_for_file,
+            'list_files': tools.list_files,
+            'read_file': tools.read_file,
             #'write_file': tools.write_file,
             'calculator': tools.calculator
             #'search_web': tools.search_web

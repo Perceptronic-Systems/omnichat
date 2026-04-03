@@ -16,10 +16,10 @@ client_settings = Settings(
     anonymized_telemetry=False
 )
 
-root_folder = "knowledge_base"
+root_folder = "/usr/lib/omnichat/backend/knowledge_base"
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 rerank_model = OllamaLLM(model="qwen3-vl:8b-instruct")
-db_location = "knowledge_base/chroma_lanchain_db"
+db_location = "/usr/lib/omnichat/backend/knowledge_base/chroma_lanchain_db"
 
 # Check if an update is required
 add_documents = not os.path.exists(db_location)
