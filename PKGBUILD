@@ -1,6 +1,6 @@
 # Maintainer: Perceptronic-Systems
 pkgname='omnichat-git'
-pkgver=0.0.1
+pkgver=0.0.2
 pkgrel=1
 pkgdesc="A minimal chat interface for LLMs"
 arch=('x86_64')
