@@ -22,8 +22,9 @@ build() {
 package() {
 	cd $srcdir/omnichat
 	install -Dm755 ./omnichat "$pkgdir/usr/bin/omnichat"
-	mkdir -p "$pkgdir/usr/share/omnichat"
-	cp -r ./backend/* "$pkgdir/usr/share/omnichat/"
+	mkdir -p "$pkgdir/usr/lib/omnichat/backend"
+	cp -r ./backend/* "$pkgdir/usr/lib/omnichat/backend"
+	chmod +x "$pkgdir/usr/lib/omnichat/backend/main.py"
 	install -Dm644 ./frontend/default-stylesheet.css "$pkgdir/usr/share/omnichat/stylesheet.css"
 	install -Dm644 ./README.md "$pkgdir/usr/share/doc/omnichat.md"
 	install -Dm644 ./LICENSE "$pkgdir/usr/share/licenses/omnichat/LICENSE"
