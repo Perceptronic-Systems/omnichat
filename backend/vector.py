@@ -16,10 +16,10 @@ client_settings = Settings(
     anonymized_telemetry=False
 )
 
-root_folder = "/var/lib/omnichat/persistent"
+knowledgebase = "/var/lib/omnichat/persistent/knowledgebase"
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 rerank_model = OllamaLLM(model="qwen3-vl:8b-instruct")
-db_location = "/var/lib/omnichat/persistent/chroma_lanchain_db"
+db_location = "./chroma_lanchain_db"
 
 # Check if an update is required
 add_documents = not os.path.exists(db_location)
@@ -61,8 +61,8 @@ if add_documents:
     i = 0
     documents = []
     ids = []
-    for category in os.listdir(f"{root_folder}/knowledgebase"):
-        for file in os.listdir(f"{root_folder}/knowledgebase/{category}"):
+    for category in os.listdir(knowledgebase):
+        for file in os.listdir(f"knowledgebase/{category}"):
             path = f"{root_folder}/knowledgebase/{category}/{file}"
             if (items:=read_file(path)) != []:
                 for item in items:
