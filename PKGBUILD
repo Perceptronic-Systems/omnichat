@@ -6,7 +6,7 @@ pkgdesc="A minimal chat interface for LLMs"
 arch=('x86_64')
 url="https://github.com/Perceptronic-Systems/omnichat"
 license=('MIT')
-depends=('gtkmm-4.0' 'cpr' 'nlohmann-json' 'python' 'python-pip' 'ollama')
+depends=('gtkmm-4.0' 'cpr' 'nlohmann-json' 'python' 'python-pip' 'ollama>=0.20.0')
 makedepends=('git' 'gcc' 'make')
 optdepends=()
 options=('!strip' '!debug')

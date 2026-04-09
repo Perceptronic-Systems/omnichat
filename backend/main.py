@@ -17,7 +17,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/generate": {"origins": "*"}})
 
 class LLM():
-    def __init__(self, model="qwen3-vl:8b-instruct", max_messages=12):
+    def __init__(self, model="gemma4:e4b", max_messages=12):
         self.model = model
         self.max_messages = max_messages
         self.messages = []

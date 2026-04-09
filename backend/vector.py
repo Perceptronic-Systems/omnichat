@@ -18,7 +18,7 @@ client_settings = Settings(
 
 knowledgebase = "/var/lib/omnichat/persistent/knowledgebase"
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
-rerank_model = OllamaLLM(model="qwen3-vl:8b-instruct")
+rerank_model = OllamaLLM(model="gemma4:e4b")
 db_location = "./chroma_lanchain_db"
 
 # Check if an update is required
