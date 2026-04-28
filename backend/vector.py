@@ -20,9 +20,10 @@ client_settings = Settings(
 llm_model = "gemma4:e4b"
 embedding_model = "nomic-embed-text"
 api = "http://127.0.0.1:11434"
+config_path = os.path.expanduser("~/.config/omnichat/config.toml")
 
-if os.path.exists("~/.config/omnichat/config.toml"):
-    with open("~/.config/omnichat/config.toml", 'r') as f:
+if os.path.exists(config_path):
+    with open(config_path, 'rb') as f:
         config = tomllib.load(f)
     try:
         llm_model = config['ollama']['model']

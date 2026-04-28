@@ -12,8 +12,10 @@ import os
 llm_model = "gemma4:e4b"
 api = "http://127.0.0.1:11434"
 
-if os.path.exists("~/.config/omnichat/config.toml"):
-    with open("~/.config/omnichat/config.toml", 'r') as f:
+config_path = os.path.expanduser("~/.config/omnichat/config.toml")
+
+if os.path.exists(config_path):
+    with open(config_path, 'rb') as f:
         config = tomllib.load(f)
     try:
         llm_model = config['ollama']['model']
@@ -22,6 +24,7 @@ if os.path.exists("~/.config/omnichat/config.toml"):
         print("Missing config attribute.")
         print(e)
 
+print(f"Host API: {api}")
 client = ollama.Client(host=api)
 
 app = Flask(__name__)
