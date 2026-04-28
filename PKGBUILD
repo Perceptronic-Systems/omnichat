@@ -25,8 +25,8 @@ package() {
 	install -Dm755 ./omnichat "$pkgdir/usr/bin/omnichat"
 	mkdir -p "$pkgdir/usr/lib/omnichat/backend"
 	cp -r ./backend/* "$pkgdir/usr/lib/omnichat/backend"
-	# python -m venv "$pkgdir/usr/lib/omnichat/backend/venv"
-	# "$pkgdir/usr/lib/omnichat/backend/venv/bin/pip" install -q --no-cache-dir numpy ollama langchain-ollama langchain-chroma langchain langchain-core langchain-community langchain-text-splitters pydantic chromadb flask[async] flask-cors pypdf beautifulsoup4
+	python -m venv "$pkgdir/usr/lib/omnichat/backend/venv"
+	"$pkgdir/usr/lib/omnichat/backend/venv/bin/pip" install -r "$srcdir/omnichat/requirements.txt" --no-cache-dir
 	chmod +x "$pkgdir/usr/lib/omnichat/backend/main.py"
 	mkdir -p "$pkgdir/var/lib/omnichat/persistent/knowledgebase"
 	install -Dm644 ./frontend/default-stylesheet.css "$pkgdir/usr/share/omnichat/stylesheet.css"
