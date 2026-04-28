@@ -6,18 +6,29 @@ import tools
 import json
 from flask import Flask, Response, request
 from flask_cors import CORS
+import tomllib
+import os
 
-try:
-    ollama.pull("nomic-embed-text")
-except Exception as e:
-    print(f"Failed to verify text embedding model: {e}")
-    exit(1)
+llm_model = "gemma4:e4b"
+api = "http://127.0.0.1:11434"
+
+if os.path.exists("~/.config/omnichat/config.toml"):
+    with open("~/.config/omnichat/config.toml", 'r') as f:
+        config = tomllib.load(f)
+    try:
+        llm_model = config['ollama']['model']
+        api = config['ollama']['host_address']
+    except Excpetion as e:
+        print("Missing config attribute.")
+        print(e)
+
+client = ollama.Client(host=api)
 
 app = Flask(__name__)
 CORS(app, resources={r"/generate": {"origins": "*"}})
 
 class LLM():
-    def __init__(self, model="gemma4:e4b", max_messages=12):
+    def __init__(self, model=llm_model, max_messages=12):
         self.model = model
         self.max_messages = max_messages
         self.messages = []
@@ -45,7 +56,7 @@ class LLM():
         response_content = ""
         status = "Generating"
         while tool_calling:
-            response_stream = ollama.chat(model=self.model,
+            response_stream = client.chat(model=self.model,
                                           messages=self.messages,
                                           tools=list(tool_options.values()),
                                           think=think,

@@ -11,14 +11,30 @@ import asyncio
 import random
 import re
 import time
+import tomllib
 
 client_settings = Settings(
     anonymized_telemetry=False
 )
 
+llm_model = "gemma4:e4b"
+embedding_model = "nomic-embed-text"
+api = "http://127.0.0.1:11434"
+
+if os.path.exists("~/.config/omnichat/config.toml"):
+    with open("~/.config/omnichat/config.toml", 'r') as f:
+        config = tomllib.load(f)
+    try:
+        llm_model = config['ollama']['model']
+        embedding_model = config['ollama']['embedding_model']
+        api = config['ollama']['host_address']
+    except Excpetion as e:
+        print("Missing config attribute.")
+        print(e)
+
 knowledgebase = "/var/lib/omnichat/persistent/knowledgebase"
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
-rerank_model = OllamaLLM(model="gemma4:e4b")
+embeddings = OllamaEmbeddings(model=embedding_model, base_url=api)
+rerank_model = OllamaLLM(model=llm_model, base_url=api)
 db_location = "./chroma_lanchain_db"
 
 # Check if an update is required
