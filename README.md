@@ -1,7 +1,8 @@
 # omnichat
-Welcome to Omnichat!
-Omnichat is a minimal LLM interface that is fully open source and ready to be customized.
-Instead of depending on the web and 3rd party services, Omnichat is capable of running completely locally on your system, enabling retrival augmented generation (RAG), file accesss, and other custom tools.
+
+## A fully open-source AI chat interface made for minimalistic setups
+
+Omnichat is a minimalistic AI chat interface for LLMs. It's fully open-source and easily customizable, fitting well into a minimalistic Arch Linux setup. Omnichat can run completely locally and offline, enabling retrival augmented generation (RAG), file accesss, and other custom tools without the need of the web.
 
 ## Installation
 To install Omnichat on Arch Linux using makepkg, first download the `PKGBUILD` file and place it in a folder on your computer named `omnichat`.
@@ -18,7 +19,3 @@ Start Ollama using either `ollama serve` in a new window, or using `sudo systemc
 
 Use `omnichat backend start` to launch the backend service.
 Then you can use `omnichat chat` to launch a new chat window.
-
-
-
-Enjoy!
