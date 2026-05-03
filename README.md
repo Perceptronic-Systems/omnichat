@@ -1,10 +1,10 @@
 # omnichat
-Welcome to Omnichat!
-Omnichat is a minimal LLM interface that is fully open source and ready to be customized.
-Instead of depending on the web and 3rd party services, Omnichat is capable of running completely locally on your system, enabling retrival augmented generation (RAG), file accesss, and other custom tools.
+Welcome to Omnichat C++!
+Omnichat C++ is a minimal LLM interface that is fully open source and ready to be customized.
+Instead of depending on the web and 3rd party services, Omnichat C++ is capable of running completely locally on your system, enabling retrival augmented generation (RAG), file accesss, and other custom tools.
 
 ## Installation
-To install Omnichat on Arch Linux using makepkg, first download the `PKGBUILD` file and place it in a folder on your computer named `omnichat`.
+To install Omnichat C++ on Arch Linux using makepkg, first download the `PKGBUILD` file and place it in a folder on your computer named `omnichat`.
 
 Then, enter the directory of that folder and use makepkg to install the package:
 ```
