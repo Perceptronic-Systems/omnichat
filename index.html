@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>omnichat</title>
+    <link rel="stylesheet" href="./frontend/stylesheet.css">
+</head>
+
+
+<body>
+    
+    <div id="header">
+        <h1>omnichat</h1>
+        <button id="taskbar-file">File</button>
+        <button id="taskbar-edit">Edit</button>
+        <button id="taskbar-view">View</button>
+        <button id="taskbar-help">Help</button>
+    </div>
+
+    <div id="toolbar">
+        <button id="schedule">S</button>
+        <button id="tool-calls">T</button>
+        <button id="knowledge-base">K</button>
+        <button id="graph">G</button>
+        <button id="console">C</button>
+    </div>
+
+    <div id="main-body">
+        <div id="chat-history" class="section">
+            <h3>this is the beginning of your conversation with omnichat</h3>
+            <div id="eoc-spacer"></div>
+        </div>
+        <div id="user-input" class="section">
+            <textarea id="input-field"></textarea>
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script type="module" src="./frontend/messages.js"></script>
+    <script type="module" src="./frontend/omnichat.js"></script>
+    <script type="module" src="./frontend/app.js"></script>
+</body>
+
+</html>

@@ -124,6 +124,12 @@ if __name__ == "__main__":
     conversations = {}
     last_used = {}
 
+    @app.route('/testapi', methods=['GET', 'OPTIONS'])
+    def test():
+        if request.metod == 'OPTIONS':
+            return '', 200
+        return {'response': 'Your API works!'}, 200
+
     @app.route('/generate', methods=['POST', 'OPTIONS'])
     async def generate():
         global conversations
