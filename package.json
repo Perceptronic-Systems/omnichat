@@ -1,0 +1,25 @@
+{
+  "name": "omnichat",
+  "version": "1.0.0",
+  "description": "Welcome to Omnichat! Omnichat is a minimal LLM interface that is fully open source and ready to be customized. Instead of depending on the web and 3rd party services, Omnichat is capable of running completely locally on your system, enabling retrival augmented generation (RAG), file accesss, and other custom tools.",
+  "homepage": "https://github.com/Perceptronic-Systems/omnichat#readme",
+  "bugs": {
+    "url": "https://github.com/Perceptronic-Systems/omnichat/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Perceptronic-Systems/omnichat.git"
+  },
+  "license": "MIT",
+  "author": "Perceptronic-Systems",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.10"
+  }
+}
