@@ -7,21 +7,12 @@ body {
     grid-template-rows: max-content 1fr;
     width: 100vw;
     height: 100vh;
-    max-height: 100vh;
+    overflow: hidden;
 }
 
 * {
     color: rgb(154, 162, 163);
     font-family: Arial, Helvetica, sans-serif;
-}
-
-#main-body {
-    display: flex;
-    flex-direction: column;
-    padding: 0px;
-    margin: 0px;
-    grid-row-start: 2;
-    grid-column-start: 2;
 }
 
 .section {
@@ -69,6 +60,7 @@ body {
     padding-bottom: 2rem;
     grid-column-start: 1;
     grid-row-start: 2;
+    grid-row-end: 4;
     width: 3rem;
     display: flex;
     display: none;
@@ -104,12 +96,17 @@ body {
 
 #user-input {
     display: flex;
+    flex-shrink: 0;
     flex-direction: row;
     margin: 0px;
+    grid-row-start: 3;
+    grid-column-start: 2;
 }
 
 #input-field {
     resize: vertical;
+    min-height: 31px;
+    max-height: 500px;
     display: flex;
     flex-grow: 1;
     overflow: auto;
@@ -160,6 +157,9 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
+    grid-row-start: 2;
+    grid-column-start: 2;
 }
 
 #chat-history h3 {
@@ -178,6 +178,7 @@ body {
 }
 
 .user {
+    white-space: pre-wrap;
     border: 1px solid;
     border-color: #619696;
     color: #619696;
@@ -190,10 +191,15 @@ body {
 }
 
 .bot {
+    white-space: pre-wrap;
     max-width: 85%;
     padding: 0.6rem;
     width: fit-content;
     display: block;
+    white-space: pre-wrap;
+}
+
+.bot span, .bot p {
     white-space: pre-wrap;
 }
 
