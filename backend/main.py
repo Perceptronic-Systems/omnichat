@@ -9,7 +9,7 @@ from flask_cors import CORS
 import tomllib
 import os
 
-llm_model = "gemma4:e4b"
+llm_model = "gemma4:e2b"
 api = "http://127.0.0.1:11434"
 
 config_path = os.path.expanduser("~/.config/omnichat/config.toml")
@@ -20,7 +20,7 @@ if os.path.exists(config_path):
     try:
         llm_model = config['ollama']['model']
         api = config['ollama']['host_address']
-    except Excpetion as e:
+    except Exception as e:
         print("Missing config attribute.")
         print(e)
 
@@ -28,7 +28,7 @@ print(f"Host API: {api}")
 client = ollama.Client(host=api)
 
 app = Flask(__name__)
-CORS(app, resources={r"/generate": {"origins": "*"}})
+CORS(app)
 
 class LLM():
     def __init__(self, model=llm_model, max_messages=12):
@@ -127,17 +127,13 @@ if __name__ == "__main__":
     conversations = {}
     last_used = {}
 
-    @app.route('/testapi', methods=['GET', 'OPTIONS'])
+    @app.route('/testapi', methods=['GET'])
     def test():
-        if request.metod == 'OPTIONS':
-            return '', 200
         return {'response': 'Your API works!'}, 200
 
-    @app.route('/generate', methods=['POST', 'OPTIONS'])
+    @app.route('/generate', methods=['POST'])
     async def generate():
         global conversations
-        if request.method == 'OPTIONS':
-            return '', 200
 
         body = request.get_json()
         prompt = body.get('prompt', '')
@@ -157,6 +153,7 @@ if __name__ == "__main__":
             return {"error": "Prompt is required"}, 400
         
         def generate_tokens():
+            print('generating tokens...')
             think = False
             user_input = prompt # For some reason it doesn't work if I use the `prompt`` variable directly, I still have a lot to learn I guess lol
             conversation = conversations.get(conversation_id, {"last_used": time.time(), "messages": []}).get("messages", [])
@@ -167,10 +164,14 @@ if __name__ == "__main__":
             stream_response = model.chat("User", user_input, think=think)
             for chunk in stream_response:
                 (tool_call_content, thought_token, answer_token, status) = chunk
-                packet = {"tool_calls": tool_call_content, "thought_token": thought_token, "answer_token": answer_token, "status": status}
-                yield str(json.dumps(packet))
+                packet = {"tool_calls": tool_call_content,
+                          "thought_token": thought_token,
+                          "answer_token": answer_token,
+                          "status": status}
+                yield f"data: {str(json.dumps(packet))} \n\n"
             yield str(json.dumps({"tool_calls": "", "thought_token": "", "answer_token": "", "status": "finished"}))
             conversations[conversation_id] = {"last_used": time.time(), "messages": model.messages}
+        
         return Response(generate_tokens(), content_type='text/event-stream')
     
-    app.run(host='127.0.0.1', port=5014)
+    app.run(host='127.0.0.1', port=5014, debug=False)

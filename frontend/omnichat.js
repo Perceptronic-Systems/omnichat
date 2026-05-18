@@ -1,3 +1,5 @@
+import { appendMessage, stopSpinner } from './messages.js';
+
 export const api = "http://127.0.0.1:5014/"
 
 export async function* generateResponse(user, prompt, id) {
@@ -18,21 +20,42 @@ export async function* generateResponse(user, prompt, id) {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let generated = "";
+        let buffer = "";
+        const status = document.getElementById('status');
         while (true) {
             const {done, value} = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-            try {
-                const responseJson = JSON.parse(chunk);
-                const nextToken = responseJson.answer_token || "";
-                yield nextToken;
-                generated += nextToken;
-            } catch (e) {
-                console.error("Chunk was not valid JSON", e);
+            const parts = buffer.split('\n\n');
+
+            buffer = parts.pop();
+
+            for (const part of parts) {
+                const line = part.trim();
+                if (!line) continue;
+                if (line.startsWith('data:')) {
+                    const jsonString = line.replace(/^data:\s*/, "");
+
+                    try {
+                        const responseJson = JSON.parse(jsonString);
+                        if (responseJson.status === "finished") {
+                            break;
+                        }
+
+                        const nextToken = responseJson.answer_token || "";
+                        if (status) {
+                            status.textContent = responseJson.status || 'Retrieving Data';
+                        }
+                        yield nextToken;
+                    } catch (e) {
+                        console.error("Chunk was not valid JSON", e);
+                    }
+                }
             }
         }
+        stopSpinner();
+        if (status) status.parentElement.remove();
     } catch (error) {
         console.log("An error occured: ", error)
     }
