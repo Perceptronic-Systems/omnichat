@@ -1,3 +1,5 @@
+import { parseMarkdown } from "./markdown";
+
 export const chatHistory = document.getElementById('chat-history');
 const spacer = document.getElementById('eoc-spacer');
 

@@ -195,7 +195,8 @@ body {
     width: fit-content;
     align-self: flex-end;
     max-width: 75%;
-    display: flex;
+    min-width: 25%;
+    display: block;
 }
 
 .bot {
@@ -211,6 +212,25 @@ body {
     white-space: pre-wrap;
 }
 
+pre, code {
+    background-color: rgb(21, 25, 25);
+    color: white;
+}
+
+code {
+    padding: 2px 4px;
+}
+
+pre {
+    padding: 10px;
+    border: solid 1px rgb(176, 176, 176);
+    overflow-x: auto;
+}
+
+blockquote { border-left: 4px solid #ccc;
+    margin: 0;
+    padding-left: 10px;
+    color: #484a4d; }
 
 @keyframes fadeIn {
     from { opacity: 0; }
