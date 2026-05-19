@@ -2,6 +2,18 @@ import { chatHistory, appendMessage } from './messages.js';
 import { generateResponse } from './omnichat.js';
 import { parseMarkdown } from "./markdown";
 
+function makeid(length) {
+    var result = '';
+    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}
+
+const id = makeid(10);
+
 const sendButton = document.getElementById('send-button');
 const inputField = document.getElementById('input-field');
 
@@ -15,7 +27,7 @@ async function sendMessage() {
         inputField.value = '';
         appendMessage("user", parseMarkdown(userInput));
         chatHistory.scrollTop = chatHistory.scrollHeight;
-        const stream = generateResponse("User", userInput, 'abcdefghijklmnop');
+        const stream = generateResponse("User", userInput, id);
         let generated = "";
         const botMessage = appendMessage("bot", "");
         for await (const token of stream) {
