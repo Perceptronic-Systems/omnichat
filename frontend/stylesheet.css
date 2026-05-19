@@ -20,6 +20,7 @@ body {
 * {
     color: rgb(154, 162, 163);
     font-family: 'AdwaitaMonoNerdFont', Arial, Helvetica, sans-serif;
+    margin: 0px;
 }
 
 .section {
@@ -191,12 +192,13 @@ body {
     border-color: #619696;
     color: #619696;
     background-color: transparent;
-    padding: 0.6rem;
+    padding: 0.75rem;
     width: fit-content;
     align-self: flex-end;
     max-width: 75%;
     min-width: 25%;
-    display: block;
+    display: flex;
+    flex-direction: column;
 }
 
 .bot {
