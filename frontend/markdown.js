@@ -35,8 +35,6 @@ export function parseMarkdown(buffer) {
                 if (inList) {
                     htmlContent += '</ul>';
                     continue;
-                } else {
-                    htmlContent += '<br>';
                 }
             }
 

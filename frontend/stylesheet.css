@@ -3,7 +3,14 @@
   src: url('./fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-}
+
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('./fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}}
 
 body {
     background-color: rgb(20, 25, 30);
@@ -19,7 +26,7 @@ body {
 
 * {
     color: rgb(154, 162, 163);
-    font-family: 'AdwaitaMonoNerdFont', Arial, Helvetica, sans-serif;
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', Arial, Helvetica, sans-serif;
     margin: 0px;
 }
 
@@ -72,11 +79,10 @@ body {
     grid-row-end: 4;
     width: 3rem;
     display: flex;
-    display: none;
     flex-direction: column;
     background-color: rgb(15, 20, 23);
     border-right: solid 1px rgb(35, 38, 39);
-    border-top: solid 5px rgb(12, 12, 16);
+    border-top: solid 5px rgb(18, 18, 22);
 }
 
 #toolbar button {
@@ -179,6 +185,15 @@ body {
     display: flex;
 }
 
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.2rem; }
+h4 { font-size: 1.1rem; }
+
+h1, h2, h3, h4 {
+    color: rgb(182, 182, 182);
+}
+
 .message {
     padding: 0px;
     margin: 0.5rem 0rem 0.5rem 0rem;
@@ -210,6 +225,12 @@ body {
     white-space: pre-wrap;
 }
 
+.bot, .user {
+    display: flex;
+    flex-direction: column;
+    gap: 1.3rem;
+}
+
 .bot span, .bot p {
     white-space: pre-wrap;
 }
@@ -227,6 +248,10 @@ pre {
     padding: 10px;
     border: solid 1px rgb(176, 176, 176);
     overflow-x: auto;
+}
+
+strong {
+    color: rgb(210, 210, 210);
 }
 
 blockquote { border-left: 4px solid #ccc;

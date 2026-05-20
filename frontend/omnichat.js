@@ -3,28 +3,24 @@ import { appendMessage, stopSpinner } from './messages.js';
 export const api = "http://127.0.0.1:5014/"
 
 export async function* generateResponse(user, prompt, id) {
+    const status = document.getElementById('status');
     try {
         const response = await fetch(`${api}generate`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ prompt, id })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({'prompt': prompt, 'id': id})
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Server shifted gears into an error: ${response.status}`, errorText);
-            return;
-        }
+        if (!response.ok) throw new Error(`HTTP error occured, status : ${response.status}`)
 
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder('utf-8');
         let buffer = "";
-        const status = document.getElementById('status');
+
         while (true) {
-            const {done, value} = await reader.read();
+            const { value, done } = await reader.read();
             if (done) break;
+
             buffer += decoder.decode(value, { stream: true });
 
             const parts = buffer.split('\n\n');
@@ -39,11 +35,11 @@ export async function* generateResponse(user, prompt, id) {
 
                     try {
                         const responseJson = JSON.parse(jsonString);
-                        if (responseJson.status === "finished") {
+                        if (responseJson.isDone === true || responseJson.status === "Idle") {
                             break;
                         }
 
-                        const nextToken = responseJson.answer_token || "";
+                        const nextToken = responseJson.token || "";
                         if (status) {
                             status.textContent = responseJson.status || 'Retrieving Data';
                         }

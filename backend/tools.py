@@ -157,6 +157,8 @@ def list_files(path: str = "/"):
     Returns:
         str: list of file paths within directory "path"
     """
+    if path.startswith('./'):
+        path = path[1:]
     full_path = path
     if full_path == "/":
         full_path = knowledge_base_folder
@@ -169,7 +171,7 @@ def list_files(path: str = "/"):
                 tool_output = f"Directory \"{path}\" is empty, it has no contents."
             else:
                 files_list = '\n'.join([f"* {f_path}" for f_path in available_filepaths])
-                tool_output = f"## Contents of folder \"{path}\":\n\n{files_list}\n\nYou may use the \"open_file\" tool call to open a file path, or the \"list_files\" again tool call again in order to open a sub-directories."
+                tool_output = f"## Contents of folder \"{path}\":\n\n{files_list}\n\nYou may use the \"read_file\" tool call to open a file path, or the \"list_files\" again tool call again in order to open a sub-directories."
         else:
             tool_output = f"The path \"{path}\" is not a directory and therefor cannot be opened as a folder."
     else:
@@ -215,13 +217,15 @@ def search_for_file(filename_query: str, limit: int):
 
 def read_file(filepath: str):
     """
-    Reads content of the file designated by "filepath". Use the "list_files" tool call in order to browse available files.
+    Reads content of the file designated by "filepath". Always use the "list_files" tool call in order to browse available files first.
 
     Args:
         filepath (str): the full path of the file to be opened, e.g. "/example_folder/test.txt"
     Returns:
         str: contents of file "filepath"
     """
+    if filepath.startswith('./'):
+        filepath = filepath[1:]
     split_path = filepath.split("/")
     filename = split_path[-1]
     del split_path
@@ -239,10 +243,10 @@ def read_file(filepath: str):
             else:
                 tool_output = f"Error, the open_file tool call does not support files of type \"{file_extension}\"."
         else:
-            tool_output = f"The item \"{filename}\" is a folder not a file, you may use the \"list_files\" tool call to view it's contents."
+            tool_output = f"The item \"{filename}\" is a directory, you may use the \"list_files\" tool call to view it's contents."
 
     else:
-        tool_output = f"Error, no such file \"{filepath}\" was found in in the direcory, try using the \"list_files\" tool call to find available files to choose from."
+        tool_output = f"Error, no such file \"{filepath}\" was found in in the direcory, use the \"list_files\" tool call to find available files to choose from."
     return tool_output, {}
 
 def write_file(filepath: str, content: str):
@@ -255,6 +259,8 @@ def write_file(filepath: str, content: str):
     Returns:
         str: status of created file
     """
+    if filepath.startswith('./'):
+        filepath = filepath[1:]
     if not filepath.startswith("/"):
         filepath = "/" + filepath
     split_path = filepath.split("/")
