@@ -12,6 +12,22 @@ ACTUAL_USER=${SUDO_USER:-$USER}
 echo "Installing backend daemon from $PROJECT_DIR..."
 echo "Service will run under user: $ACTUAL_USER"
 
+if [ ! -d "$PROJECT_DIR/.venv" ]; then
+  echo "Creating Python virtual environment..."
+  sudo -u "$ACTUAL_USER" python3 -m venv "$PROJECT_DIR/.venv"
+fi
+
+# 2. Install dependencies using your requirements.txt
+echo "Installing/Updating dependencies from requirements.txt..."
+sudo -u "$ACTUAL_USER" "$PROJECT_DIR/.venv/bin/pip" install --upgrade pip
+
+if [ -f "$PROJECT_DIR/requirements.txt" ]; then
+  sudo -u "$ACTUAL_USER" "$PROJECT_DIR/.venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
+else
+  echo "⚠️ warning: requirements.txt not found! Installing baseline packages..."
+  sudo -u "$ACTUAL_USER" "$PROJECT_DIR/.venv/bin/pip" install fastapi uvicorn ollama pydantic
+fi
+
 # Create the systemd service file dynamically
 cat <<EOF > /etc/systemd/system/omnichat.service
 [Unit]
