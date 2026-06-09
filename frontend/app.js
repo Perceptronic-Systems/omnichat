@@ -1,6 +1,6 @@
 import { chatHistory, appendMessage } from './messages.js';
 import { generateResponse } from './omnichat.js';
-import { parseMarkdown } from "./markdown";
+import { parseMarkdown } from "./markdown.js";
 
 const id = Math.floor(Math.random() * 100000000);;
 

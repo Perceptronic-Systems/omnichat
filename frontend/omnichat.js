@@ -1,6 +1,6 @@
 import { appendMessage, stopSpinner } from './messages.js';
 
-export const api = "http://127.0.0.1:5014/"
+export const api = "http://192.168.50.162:5014/"
 
 export async function* generateResponse(user, prompt, id) {
     const status = document.getElementById('status');
