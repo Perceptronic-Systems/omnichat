@@ -21,7 +21,7 @@ After=network.target
 [Service]
 Type=simple
 User=$ACTUAL_USER
-WorkingDirectory=$PROJECT_DIR
+WorkingDirectory=$PROJECT_DIR/backend
 ExecStart=/usr/bin/env python3 $PROJECT_DIR/backend/main.py
 Restart=on-failure
 Environment=PYTHONUNBUFFERED=1

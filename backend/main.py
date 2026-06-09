@@ -11,7 +11,7 @@ import json
 import asyncio
 import uvicorn
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 sessions = {}
 
 app.add_middleware(
@@ -54,6 +54,7 @@ def generate(content: PromptStructure):
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
+        host="0.0.0.0",
         port=5014,
         reload=False
     )
