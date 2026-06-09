@@ -38,7 +38,7 @@ After=network.target
 Type=simple
 User=$ACTUAL_USER
 WorkingDirectory=$PROJECT_DIR/backend
-ExecStart=/usr/bin/env python3 $PROJECT_DIR/backend/main.py
+ExecStart=$PROJECT_DIR/.venv/bin/python $PROJECT_DIR/backend/main.py
 Restart=on-failure
 Environment=PYTHONUNBUFFERED=1
 
