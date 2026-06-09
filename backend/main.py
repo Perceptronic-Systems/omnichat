@@ -11,6 +11,11 @@ import json
 import asyncio
 import uvicorn
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await initialize_tools()
+    yield
+    
 app = FastAPI(lifespan=lifespan)
 sessions = {}
 
@@ -25,11 +30,6 @@ app.add_middleware(
 class PromptStructure(BaseModel):
     prompt: str
     id: int
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await initialize_tools()
-    yield
 
 @app.get("/status")
 def get_status():
