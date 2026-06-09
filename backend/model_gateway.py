@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import ollama
 import tomllib
 import os

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from model_gateway import llm, initialize_tools
 import fastapi
 from fastapi import Response, FastAPI

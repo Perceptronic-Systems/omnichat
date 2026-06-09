@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from vector import retriever, query_pages
 from sympy import sympify

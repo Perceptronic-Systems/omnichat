@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma

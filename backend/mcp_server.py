@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from fastmcp import FastMCP
 from sympy import sympify
 import asyncio
