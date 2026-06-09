@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import json
 import asyncio
+import uvicorn
 
 app = FastAPI()
 sessions = {}
@@ -49,3 +50,10 @@ def generate(content: PromptStructure):
     stream = generator_wrapper(model, content.prompt)
     response = StreamingResponse(stream, media_type='plain/text')
     return response
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        port=5014,
+        reload=False
+    )
