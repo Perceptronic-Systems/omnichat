@@ -1,4 +1,4 @@
-import { appendMessage, stopSpinner } from './src/messages.js';
+import { appendMessage, stopSpinner } from './messages.js';
 
 export const api = "http://192.168.50.162:5014/"
 
