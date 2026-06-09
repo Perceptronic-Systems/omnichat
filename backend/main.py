@@ -47,5 +47,3 @@ def generate(content: PromptStructure):
     stream = generator_wrapper(model, content.prompt)
     response = StreamingResponse(stream, media_type='plain/text')
     return response
-
-
