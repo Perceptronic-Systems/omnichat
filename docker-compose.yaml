@@ -1,0 +1,38 @@
+services:
+  omnichat-backend:
+    build: .
+    container_name: omnichat-backend
+    restart: unless-stopped
+    networks:
+      - omnichat_net
+      - nextcloud-docker_default
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-service
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - omnichat_net
+      - nextcloud-docker_default
+
+volumes:
+  ollama_data:
+
+networks:
+  omnichat_net:
+    driver: bridge
+  nextcloud_network:
+    external: true # Tells Docker this network already exists (used by Nextcloud)
