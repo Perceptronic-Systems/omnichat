@@ -3,6 +3,8 @@ services:
     build: .
     container_name: omnichat-backend
     restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=http://ollama-service:11434
     networks:
       - omnichat_net
       - nextcloud_net
@@ -14,7 +16,7 @@ services:
     ports:
       - "11434:11434"
     environment:
-      - OLLAMA_HOST=ollama-service:11434
+      - OLLAMA_HOST=0.0.0.0:11434
     volumes:
       - ollama_data:/root/.ollama
     deploy:
