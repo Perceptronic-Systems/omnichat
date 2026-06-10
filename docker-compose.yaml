@@ -5,8 +5,6 @@ services:
     restart: unless-stopped
     environment:
       - OLLAMA_HOST=http://ollama-service:11434
-    ports:
-      - "5014:5014"
     networks:
       - omnichat_net
 
@@ -14,8 +12,6 @@ services:
     image: ollama/ollama:latest
     container_name: ollama-service
     restart: unless-stopped
-    ports:
-      - "11434:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
     volumes:
@@ -38,8 +34,7 @@ services:
       - "443:443"
     volumes:
       - ./omnichat-nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      # Mount your self-signed certs here:
-      - /etc/ssl/local-certs:/etc/ssl/local-certs:ro
+      - /etc/ssl/tailscale-certs:/etc/ssl/tailscale-certs:ro
     networks:
       - omnichat_net
 
