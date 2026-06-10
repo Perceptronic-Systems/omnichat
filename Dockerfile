@@ -1,12 +1,4 @@
-FROM ollama/ollama:latest
-
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN ln -s /usr/bin/python3 /usr/bin/python
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -21,4 +13,4 @@ RUN chmod +x backend/entrypoint.sh
 
 EXPOSE 5014
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./backend/entrypoint.sh"]
