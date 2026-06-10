@@ -7,7 +7,7 @@ import asyncio
 
 import mcp_server as mcp
 
-llm_model = "gemma4:e2b"
+llm_model = "gemma4:e4b"
 api = "http://127.0.0.1:11434"
 client = ollama.Client(host=api)
 

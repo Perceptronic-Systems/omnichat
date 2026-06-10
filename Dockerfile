@@ -1,4 +1,12 @@
-FROM python:3.11-slim
+FROM ollama/ollama:latest
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /app
 
@@ -8,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./backend/
 
+COPY backend/entrypoint.sh .
+RUN chmod +x backend/entrypoint.sh
+
 EXPOSE 5014
 
-CMD ["python", "backend/main.py"]
+ENTRYPOINT ["./entrypoint.sh"]
