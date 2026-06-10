@@ -8,7 +8,8 @@ import asyncio
 import mcp_server as mcp
 
 llm_model = "gemma4:e4b"
-api = "http://127.0.0.1:11434"
+default_api = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+api = default_api
 client = ollama.Client(host=api)
 
 bot_name = "Omnichat"
