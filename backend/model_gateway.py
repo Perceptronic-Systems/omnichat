@@ -31,6 +31,7 @@ Do whatever the user tells you to."""
 tools_list = []
 available_tools = {}
 async def initialize_tools():
+    global tools_list, available_tools
     tools_list, available_tools = await mcp.initialize_tools()
 
 

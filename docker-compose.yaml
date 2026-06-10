@@ -36,8 +36,7 @@ volumes:
 networks:
   omnichat_net:
     driver: bridge
-  nextcloud_network:
-    external: true # Tells Docker this network already exists (used by Nextcloud)
+    name: omnichat_net
   nextcloud_net:
     external: true
     name: nextcloud-docker_default
