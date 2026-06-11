@@ -3,36 +3,48 @@
 
 <head>
     <title>omnichat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./src/stylesheet.css">
 </head>
 
 
 <body>
-    
+
     <div id="header">
         <h1>omnichat</h1>
-        <button id="taskbar-file">File</button>
-        <button id="taskbar-edit">Edit</button>
-        <button id="taskbar-view">View</button>
-        <button id="taskbar-help">Help</button>
-    </div>
 
-    <div id="toolbar">
-        <button id="schedule">S</button>
-        <button id="tool-calls">T</button>
-        <button id="knowledge-base">K</button>
-        <button id="graph">G</button>
-        <button id="console">C</button>
-    </div>
+        <div id="nav-menu">
+            <button id="taskbar-file">File</button>
+            <button id="taskbar-edit">Edit</button>
+            <button id="taskbar-view">View</button>
+            <button id="taskbar-help">Help</button>
+        </div>
 
-    <div id="chat-history" class="section">
-        <h3>this is the beginning of your conversation with omnichat</h3>
-        <div id="eoc-spacer"></div>
+        <button id="menu-toggle" aria-label="Toggle Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </div>
-    
-    <div id="user-input" class="section">
-        <textarea id="input-field"></textarea>
-        <button id="send-button">Send</button>
+    <div class="row" style="flex-grow: 1; min-height: 0; overflow: hidden;">
+        <div id="toolbar">
+            <button id="schedule">S</button>
+            <button id="tool-calls">T</button>
+            <button id="knowledge-base">K</button>
+            <button id="graph">G</button>
+            <button id="console">C</button>
+        </div>
+        <div class="column" style="flex: 1;">
+            <div id="chat-history" class="section">
+                <h3>this is the beginning of your conversation with omnichat</h3>
+                <div id="eoc-spacer"></div>
+            </div>
+
+            <div id="user-input" class="section">
+                <textarea id="input-field"></textarea>
+                <button id="send-button">Send</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="./src/omnichat.js"></script>
