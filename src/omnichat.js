@@ -1,6 +1,34 @@
 import { appendMessage, stopSpinner } from './messages.js';
 
-export const api = `${window.location.origin}/api/`;
+function initializeApi() {
+    let storedApi = localStorage.getItem('omnichat_api_url');
+    
+    if (!storedApi) {
+        // Fallback default value to show in the prompt box
+        const defaultApi = `http://127.0.0.1:5014/api/`;
+        
+        let userInput = prompt("Please enter your API Base URL:", defaultApi);
+        
+        // If user cancels or leaves it empty, fallback to default
+        if (!userInput || userInput.trim() === "") {
+            storedApi = defaultApi;
+        } else {
+            storedApi = userInput.trim();
+        }
+        
+        // Ensure it ends with a trailing slash to prevent URL concatenation bugs
+        if (!storedApi.endsWith('/')) {
+            storedApi += '/';
+        }
+        
+        // Save it for the next visit
+        localStorage.setItem('omnichat_api_url', storedApi);
+    }
+    
+    return storedApi;
+}
+
+export const api = initializeApi();
 console.log(`API: ${api}`);
 
 export async function* generateResponse(user, prompt, id) {
