@@ -6,6 +6,27 @@ const id = Math.floor(Math.random() * 100000000);;
 
 const sendButton = document.getElementById('send-button');
 const inputField = document.getElementById('input-field');
+const navButton = document.getElementById('menu-toggle');
+const navMenu = document.getElementById('nav-menu');
+
+window.addEventListener('resize', e => {
+    if (window.innerWidth > 812) {
+        navMenu.style.visibility = 'visible';
+        navMenu.style.opacity = 1;
+    }
+})
+
+navButton.addEventListener('click', e => {
+    if (navMenu.style.visibility === 'hidden') {
+        navMenu.style.visibility = 'visible';
+        navMenu.style.opacity = 1;
+    } else {
+        navMenu.style.visibility = 'hidden';
+        navMenu.style.opacity = 0;
+        const existing = Array.from(document.getElementsByClassName('side-popup'));
+        if (existing.length > 0) existing.forEach(e => e.remove());
+    }
+});
 
 sendButton.addEventListener('click', async () => {
     await sendMessage();

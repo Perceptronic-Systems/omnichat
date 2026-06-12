@@ -11,13 +11,11 @@
 <body>
 
     <div id="header">
-        <h1>omnichat</h1>
-
-        <div id="nav-menu">
-            <button id="taskbar-file">File</button>
-            <button id="taskbar-edit">Edit</button>
-            <button id="taskbar-view">View</button>
-            <button id="taskbar-help">Help</button>
+        <div id="nav-menu" style="visibility: hidden; opacity: 0">
+            <button class="task-button" id="taskbar-file" name="file">File</button>
+            <button class="task-button" id="taskbar-edit" name="edit">Edit</button>
+            <button class="task-button" id="taskbar-view" name="view">View</button>
+            <button class="task-button" id="taskbar-help" name="help">Help</button>
         </div>
 
         <button id="menu-toggle" aria-label="Toggle Menu">
@@ -25,6 +23,7 @@
             <span></span>
             <span></span>
         </button>
+        <h1 style="margin-left: auto;">omnichat</h1>
     </div>
     <div class="row" style="flex-grow: 1; min-height: 0; overflow: hidden;">
         <div id="toolbar">
@@ -48,6 +47,7 @@
     </div>
 
     <script type="module" src="./src/omnichat.js"></script>
+    <script type="module" src="./src/taskbar-popups.js"></script>
     <script type="module" src="./src/app.js"></script>
 </body>
 

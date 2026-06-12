@@ -1,6 +1,10 @@
 import { appendMessage, stopSpinner } from './messages.js';
 
-function initializeApi() {
+export function clearStoredApi() {
+    localStorage.removeItem('omnichat_api_url');
+}
+
+export function initializeApi() {
     let storedApi = localStorage.getItem('omnichat_api_url');
     
     if (!storedApi) {
@@ -28,7 +32,9 @@ function initializeApi() {
     return storedApi;
 }
 
-export const api = initializeApi();
+export let api = initializeApi();
+
+export function setApi(newApi) { api = newApi };
 console.log(`API: ${api}`);
 
 export async function* generateResponse(user, prompt, id) {

@@ -67,7 +67,7 @@ body {
     position: relative;
 }
 
-#header button {
+.task-button {
     border-style: none;
     border-radius: 0px;
     color: rgb(135, 135, 135);
@@ -76,11 +76,11 @@ body {
     padding: 0.4rem 1rem 0.4rem 1rem;
 }
 
-#header button:hover {
+.task-button:hover {
     background-color: rgba(45, 50, 50, 0.5);
 }
 
-#header button:active {
+.task-button:active {
     background-color: rgba(45, 50, 50, 0.7);
 }
 
@@ -90,15 +90,14 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-around;
-    width: 3.5rem;
+    width: 2rem;
     height: 1.5rem;
     background: transparent;
     border: none;
     cursor: pointer;
     padding: 0;
     align-self: center;
-    margin-left: auto; /* Pushes it to the far right */
-    margin-right: 1rem;
+    margin-left: 1rem;
 }
 
 /* The three bars of the hamburger */
@@ -107,6 +106,13 @@ body {
     height: 3px;
     background-color: rgb(154, 162, 163);
     transition: all 0.3s ease;
+}
+
+.side-popup {
+    display: flex;
+    flex-direction: column;
+    background-color:#484a4d;
+    width: 5rem;
 }
 
 #toolbar {
@@ -337,17 +343,20 @@ blockquote { border-left: 4px solid #ccc;
         visibility: visible;
     }
 
-    #nav-menu {
-        opacity: 0;
-        visibility: hidden;
-        width: 50%;
+    #nav-menu, .side-popup {
+        width: fit-content;
         background-color:rgb(33, 37, 39);
         display: flex;
         flex-direction: column;
         position: absolute;
-        right: 0;
+        left: 0;
         top: 2rem;
 
+    }
+
+    .task-button {
+        width: 100%;
+        text-align: left;
     }
 
     #toolbar {
