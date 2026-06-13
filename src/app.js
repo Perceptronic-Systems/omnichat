@@ -9,6 +9,10 @@ const inputField = document.getElementById('input-field');
 const navButton = document.getElementById('menu-toggle');
 const navMenu = document.getElementById('nav-menu');
 
+if (window.innerWidth > 812) {
+    navMenu.style.visibility = 'visible';
+    navMenu.style.opacity = 1;
+}
 window.addEventListener('resize', e => {
     if (window.innerWidth > 812) {
         navMenu.style.visibility = 'visible';

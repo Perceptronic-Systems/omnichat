@@ -5,28 +5,49 @@ export function resetApi() {
     setApi(initializeApi());
 }
 
+export function downloadChat() {
+    console.log('Development under progress, coming soon');
+}
+
+export function uploadChat() {
+    console.log('Development under progress, coming soon');
+}
+
 const header = document.getElementById('header');
 
 let elements = {
-    file: {dir: true, contents: []},
+    file: {dir: true, contents: ['download_chat', 'upload_chat']},
     edit: {dir: true, contents: ["change_API_link"]},
     view: {dir: true, contents: []},
     help: {dir: true, contents: []},
-    change_API_link: {dir: false, action: resetApi}
+    change_API_link: {dir: false, action: resetApi},
+    download_chat: {dir: false, action: downloadChat},
+    upload_chat: {dir: false, action: uploadChat}
 };
 
 export function hideAll() {
     const existing = Array.from(document.getElementsByClassName('side-popup'));
     if (existing.length > 0) existing.forEach(e => e.remove());
     const navMenu = document.getElementById('nav-menu');
-    navMenu.style.visibility = 'hidden';
-    navMenu.style.opacity = 0;
+    if (window.innerWidth <= 812) {
+        navMenu.style.visibility = 'hidden';
+        navMenu.style.opacity = 0;
+    }
 }
+
+document.addEventListener('keydown', e => {
+    switch (e.key.toLowerCase()) {
+        case "escape":
+            e.preventDefault();
+            hideAll();
+            break;
+    }
+})
 
 export function generateTable(domElement) {
     const name = "contents_" + domElement.name;
     const existing = Array.from(document.getElementsByClassName('side-popup'));
-    if (existing.length > 0) existing.filter(e => e.name === name).forEach(e => {
+    if (existing.length > 0) existing.forEach(e => {
         e.remove()
         console.log('removed popup')
     });
@@ -46,8 +67,13 @@ export function generateTable(domElement) {
         const rect = domElement.getBoundingClientRect();
         const scrollX = window.scrollX || window.pageXOffset;
         const scrollY = window.scrollY || window.pageYOffset;
-        container.style.left = `${rect.right + scrollX}px`;
-        container.style.top = `${rect.bottom + scrollY}px`;
+        if (window.innerWidth > 812) {
+            container.style.left = `${rect.left + scrollX}px`;
+            container.style.top = `${rect.bottom + scrollY}px`;
+        } else {
+            container.style.left = `${rect.right + scrollX}px`;
+            container.style.top = `${rect.top + scrollY}px`;
+        }
         header.appendChild(container);
     } else {
         item.action();

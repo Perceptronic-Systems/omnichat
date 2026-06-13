@@ -81,6 +81,7 @@ class llm():
                     status = 'Using tools'
                 yield {'status': status, 'token': delta.content, 'tool_calls': [], 'is_done': False}
             if delta.tool_calls:
+                status = 'Using tools'
                 for t in delta.tool_calls:
                     tool_call = {'function': {'name': t.function.name, 'arguments': t.function.arguments}}
                     full_response['tool_calls'].append(tool_call)
@@ -88,14 +89,14 @@ class llm():
 
                 yield {'status': status, 'token': '', 'tool_calls': tool_call, 'is_done': False}
 
-        if full_response['tool_calls']:
+        if full_response['tool_calls'] or full_response['content'] == '':
             formatted_tool_calls = []
             for t in full_response['tool_calls']:
                 formatted_tool_calls.append(ollama.Message.ToolCall(function={
                         'name': t['function']['name'],
                         'arguments': t['function']['arguments']
                     }))
-
+            print("     reccursion")
             self.messages.append({
                 'role': 'assistant',
                 'content': full_response['content'],
@@ -115,6 +116,11 @@ class llm():
 
             yield from self.generate('')
         else:
+            print(f"AI Response: {full_response['content']}")
+            self.messages.append({
+                'role': 'assistant',
+                'content': full_response['content']
+            })
             status = "idle"
             print("Done!")
             yield {'status': status, 'token': '', 'tool_calls': [], 'is_done': True}
