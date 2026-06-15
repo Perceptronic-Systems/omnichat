@@ -44,7 +44,7 @@ def generator_wrapper(model, prompt: str):
 def generate(content: PromptStructure):
     print('Fetching model...')
     if not sessions.get(content.id):
-        sessions[content.id] = llm('gemma4:e2b', 'Omnichat')
+        sessions[content.id] = llm('Omnichat')
     print(sessions)
     model = sessions[content.id]
     stream = generator_wrapper(model, content.prompt)

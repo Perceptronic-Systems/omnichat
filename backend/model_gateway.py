@@ -50,7 +50,7 @@ if os.path.exists(config_path):
 print(f"Ollama Server API: {api}")
 
 class llm():
-    def __init__(self, model, name, prompt=default_prompt, max_messages=12):
+    def __init__(self, name, model=llm_model, prompt=default_prompt, max_messages=12):
         self.model = model
         self.name = name
         self.prompt = default_prompt
