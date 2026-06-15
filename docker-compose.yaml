@@ -8,7 +8,7 @@ services:
     networks:
       - omnichat_net
     volumes:
-      - /etc/omnichat/config.toml:/etc/omnichat/config.toml
+      - /etc/omnichat:/etc/omnichat
 
   ollama:
     image: ollama/ollama:latest
