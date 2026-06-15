@@ -9,7 +9,7 @@ SEARXNG_API = "http://localhost:8080/"
 blocked_personal = []
 BANNED_WORDS = []
 
-config_path = os.path.expanduser("~/.config/omnichat/config.toml")
+config_path = os.path.expanduser("/etc/omnichat/config.toml")
 
 if os.path.exists(config_path):
     with open(config_path, 'rb') as f:

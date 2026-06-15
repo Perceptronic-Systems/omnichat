@@ -35,7 +35,7 @@ async def initialize_tools():
     tools_list, available_tools = await mcp.initialize_tools()
 
 
-config_path = os.path.expanduser("~/.config/omnichat/config.toml")
+config_path = os.path.expanduser("/etc/omnichat/config.toml")
 
 if os.path.exists(config_path):
     with open(config_path, 'rb') as f:
