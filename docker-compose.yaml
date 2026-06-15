@@ -10,7 +10,7 @@ services:
       - omnichat_net
     volumes:
       - /etc/omnichat:/etc/omnichat
-      - ~/omnichat/knowledge_base:/etc/omnichat_knowledge_base
+      - ./omnichat/knowledge_base:/etc/omnichat_knowledge_base
 
   ollama:
     image: ollama/ollama:latest
