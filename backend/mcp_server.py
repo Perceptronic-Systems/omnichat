@@ -13,7 +13,7 @@ from web_search import _searxng_available, search_searxng
 
 mcp = FastMCP('my local tools')
 
-knowledge_base_folder = "knowledge_base"
+knowledge_base_folder = "/etc/omnichat_knowledge_base"
 
 def get_files(path):
     if path == "/":
