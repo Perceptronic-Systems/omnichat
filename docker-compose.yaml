@@ -7,6 +7,8 @@ services:
       - OLLAMA_HOST=http://ollama-service:11434
     networks:
       - omnichat_net
+    volumes:
+      - /etc/omnichat/config.toml:/etc/omnichat/config.toml
 
   ollama:
     image: ollama/ollama:latest
