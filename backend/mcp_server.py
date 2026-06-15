@@ -8,6 +8,8 @@ import asyncio
 from ddgs import DDGS
 import os
 import difflib
+import requests
+from web_search import _searxng_available, search_searxng
 
 mcp = FastMCP('my local tools')
 
@@ -24,41 +26,24 @@ def get_files(path):
 
 
 
-@mcp.tool()
-def search_web(query: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """
-    Search the web using DuckDuckGo to get up-to-date information on a topic.
-
-    Args:
-        query: The search terms or question to look up.
-        limit: The maximum number of search results to return (default is 5).
-
-    Returns:
-        A list of dictionaries, where each dictionary contains 'title', 'href' (URL), and 'body'.
-    """
-    # Enforce a sane upper limit to prevent token bloat
-    max_results = min(limit, 10)
+if _searxng_available():
+    @mcp.tool()
+    def search_web(query: str, limit: int = 8) -> list[dict]:
+        """
+        Search the web using SearXNG to get up-to-date information on a topic.
     
-    try:
-        with DDGS() as ddgs:
-            # Fetch text results from DuckDuckGo
-            results = ddgs.text(query, max_results=max_results)
-            
-            # Format the output cleanly for the LLM
-            formatted_results = [
-                {
-                    "title": r.get("title"),
-                    "href": r.get("href"),
-                    "body": r.get("body")
-                }
-                for r in results
-            ]
-            print(formatted_results)
-            return formatted_results
-            
-    except Exception as e:
-        # Return the error gracefully so the LLM knows the tool failed
-        return [{"error": f"Failed to fetch search results: {str(e)}"}]
+        Args:
+            query: The search terms or question to look up.
+            limit: The maximum number of search results to return (default 5, max 10).
+    
+        Returns:
+            A list of dicts with 'title', 'url', and 'snippet' keys drawn from
+            the actual page content of each result.
+        """
+        return search_searxng(query, limit)
+else:
+    print("SearXNG not available — search_web tool not registered.")
+ 
 
 @mcp.tool()
 def evaluate(equation: str) -> str:
@@ -71,7 +56,7 @@ def evaluate(equation: str) -> str:
 def list_files(path: str = "/") -> List[str]:
     """
     Lists the files and immediate contents of a specific directory within the knowledge base.
-    Use this to browse a folder's contents when you know the exact path.
+    Use this to browse a directory's contents or the available directories within the root directory "/".
 
     Args:
         path (str): The relative path of the directory to list, starting from the root "/". Defaults to "/".
@@ -115,7 +100,7 @@ def get_all_files(dir="/"):
 def search_for_file(filename_query: str, limit: int) -> List[str]:
     """
     Searches for files in the knowledge base using fuzzy matching against their filenames.
-    Use this when you know part of a filename but are unsure of its exact path or spelling.
+    Use this when you know part of a filename but are unsure of its exact path, spelling, or extension.
 
     Args:
         filename_query (str): The search term or partial filename to match against.
@@ -136,8 +121,6 @@ def search_for_file(filename_query: str, limit: int) -> List[str]:
 def read_file(filepath: str) -> str:
     """
     Reads and returns the content of a specific file from the knowledge base.
-    Supported text formats: .txt, .pdf, .html, .css, .js, .py, .md.
-    Supported image formats: .png, .jpg, .jpeg (confirms display status).
 
     Args:
         filepath (str): The path of the file to read, relative to the knowledge base root (e.g., "/documents/notes.md").
