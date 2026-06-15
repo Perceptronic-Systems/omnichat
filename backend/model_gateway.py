@@ -109,10 +109,13 @@ class llm():
 
                 try:
                     tool_output = available_tools[tool_name](**tool_args)
-                    self.messages.append({'role': 'tool', 'content': str(tool_output)})
                 except Exception as e:
+                    tool_output = f"Error executing tool: {e}"
                     print(f'Error, could not execute tool "{tool_name}" with arguments "{tool_args}"')
                     print(e)
+
+                self.messages.append({'role': 'tool', 'content': str(tool_output)})
+
 
             yield from self.generate('')
         else:
