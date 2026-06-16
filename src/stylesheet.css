@@ -203,7 +203,7 @@ body {
     background-color: #222428;
     border: 1px solid #38485c;
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: 0px;
     font-size: 0.85rem;
     color: #004085;
 }
