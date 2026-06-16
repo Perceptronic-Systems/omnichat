@@ -37,13 +37,24 @@ export let api = initializeApi();
 export function setApi(newApi) { api = newApi };
 console.log(`API: ${api}`);
 
-export async function* generateResponse(user, prompt, id) {
+export async function* generateResponse(user, prompt, id, files = []) {
     const status = document.getElementById('status');
     try {
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('prompt', prompt || '');
+
+        if (files && files.length > 0) {
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+        } else {
+            formData.append('files', new Blob([]), ''); 
+        }
+
         const response = await fetch(`${api}generate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({'prompt': prompt, 'id': id})
+            body: formData // Explicitly NO Content-Type header! Let the browser handle it.
         });
 
         if (!response.ok) throw new Error(`HTTP error occured, status : ${response.status}`)

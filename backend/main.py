@@ -2,11 +2,11 @@
 
 from model_gateway import llm, initialize_tools
 import fastapi
-from fastapi import Response, FastAPI
+from fastapi import Response, FastAPI, Form, UploadFile, File
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
+from typing import List, Optional
 import json
 import asyncio
 import uvicorn
@@ -27,28 +27,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class PromptStructure(BaseModel):
-    prompt: str
-    id: int
-
 @app.get("/status")
 def get_status():
     return "Running"
 
-def generator_wrapper(model, prompt: str):
-    stream = model.generate(prompt)
+def generator_wrapper(model, prompt: str, files: List[UploadFile]):
+    # We pass raw fields downwards to the model wrapper
+    stream = model.generate(prompt, files)
     for chunk in stream:
         yield 'data: ' + json.dumps(chunk) + ' \n\n'
 
 @app.post("/generate")
-def generate(content: PromptStructure):
-    print('Fetching model...')
-    if not sessions.get(content.id):
-        sessions[content.id] = llm('Omnichat')
-    print(sessions)
-    model = sessions[content.id]
-    stream = generator_wrapper(model, content.prompt)
-    response = StreamingResponse(stream, media_type='plain/text')
+async def generate(
+    id: int = Form(...),
+    prompt: str = Form(default=""),
+    files: Optional[List[UploadFile]] = File(default=None)
+):
+    print(f"Fetching model for session: {id}...")
+    
+    valid_files = []
+    if files:
+        for file in files:
+            if file.filename != '':
+                valid_files.append(file)
+
+    if not sessions.get(id):
+        sessions[id] = llm('Omnichat')
+        
+    model = sessions[id]
+    
+    stream = generator_wrapper(model, prompt, valid_files)
+    response = StreamingResponse(stream, media_type='text/event-stream')
     return response
 
 if __name__ == "__main__":

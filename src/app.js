@@ -2,6 +2,8 @@ import { chatHistory, appendMessage } from './messages.js';
 import { generateResponse } from './omnichat.js';
 import { parseMarkdown } from "./markdown.js";
 
+const fileInput = document.getElementById('add-media');
+
 const id = Math.floor(Math.random() * 100000000);;
 
 const sendButton = document.getElementById('send-button');
@@ -38,11 +40,16 @@ sendButton.addEventListener('click', async () => {
 
 async function sendMessage() {
     const userInput = inputField.value;
+    const files = fileInput.files;
     if (userInput !== '') {
         inputField.value = '';
         appendMessage("user", parseMarkdown(userInput));
+        if (files.length > 0) {
+            appendMessage("user", `*Attached ${files.length} file(s)*`);
+        }
         chatHistory.scrollTop = chatHistory.scrollHeight;
-        const stream = generateResponse("User", userInput, id);
+        const stream = generateResponse("User", userInput, id, files);
+        fileInput.value = '';
         let generated = "";
         const botMessage = appendMessage("bot", "");
         for await (const token of stream) {
