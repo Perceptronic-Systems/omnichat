@@ -142,3 +142,18 @@ inputField.addEventListener('keydown', async (event) => {
         await sendMessage();
     }
 });
+
+function adjustViewportHeight() {
+  if (window.visualViewport) {
+    // Set a custom CSS variable on the document root
+    const vvHeight = window.visualViewport.height;
+    document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
+  }
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', adjustViewportHeight);
+  window.visualViewport.addEventListener('scroll', adjustViewportHeight);
+}
+
+adjustViewportHeight();
