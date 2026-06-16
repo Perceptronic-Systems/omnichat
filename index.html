@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="./src/stylesheet.css">
 </head>
 
-
 <body>
 
     <div id="header">
@@ -25,6 +24,7 @@
         </button>
         <h1 style="margin-left: auto;">omnichat</h1>
     </div>
+
     <div class="row" style="flex-grow: 1; min-height: 0; overflow: hidden;">
         <div id="toolbar">
             <button id="schedule">S</button>
@@ -33,6 +33,7 @@
             <button id="graph">G</button>
             <button id="console">C</button>
         </div>
+        
         <div class="column" style="flex: 1;">
             <div id="chat-history" class="section">
                 <h3>this is the beginning of your conversation with omnichat</h3>
@@ -40,10 +41,14 @@
             </div>
 
             <div id="user-input" class="section">
-                <label for="add-media" class="media-btn-label">📎</label>
-                <input id="add-media" type="file" multiple style="display: none;">
-                <textarea id="input-field"></textarea>
-                <button id="send-button">Send</button>
+                <div id="file-preview-container"></div>
+                
+                <div class="input-controls-row" style="display: flex; align-items: center; width: 100%;">
+                    <label for="add-media" class="media-btn-label">+</label>
+                    <input id="add-media" type="file" multiple style="display: none;">
+                    <textarea id="input-field"></textarea>
+                    <button id="send-button">Send</button>
+                </div>
             </div>
         </div>
     </div>

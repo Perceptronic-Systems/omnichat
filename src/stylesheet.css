@@ -155,6 +155,7 @@ body {
 }
 
 #user-input {
+    position: relative;
     display: flex;
     flex-shrink: 0;
     flex-direction: row;
@@ -180,24 +181,78 @@ body {
     border: none;
 }
 
-#add-media {
-    width: 2.5rem;
-    font-size: 24pt;
+#input-controls-row {
+    width: 100%;
+}
+
+#file-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+    width: 100%;
+    position: absolute;
+    top: -40%;
+}
+
+.file-preview-badge {
+    display: flex;
+    align-items: center;
+    background-color: #222428;
+    border: 1px solid #38485c;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #004085;
+}
+
+.file-preview-icon {
+    margin-right: 6px;
+    font-size: 1.1rem;
+}
+
+.file-preview-name {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+}
+
+.file-preview-remove {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
     font-weight: bold;
-    background-color: rgb(39, 44, 44);
-    border-radius: 0;
-    border-color: transparent;
+    padding: 0 2px;
+    font-size: 0.9rem;
 }
 
-#add-media:hover {
-    background-color: rgb(41, 47, 47);
-    text-shadow: 0px 0px 4px rgb(80, 173, 181);
+.file-preview-remove:hover {
+    color: #a71d2a;
 }
 
-#add-media:active {
-    background-color: rgb(46, 56, 56);
-    color: white;
-    text-shadow: 0px 0px 4px rgb(79, 189, 199);
+.media-btn-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 100%;
+    background-color: #20242a;
+    font-size: 1.2rem;
+    cursor: pointer;
+    user-select: none;
+    margin-right: 8px;
+}
+
+.media-btn-label:hover {
+    background-color: #232933;
+    border: solid 1px rgb(26, 132, 132);
+}
+
+.media-btn-label:active {
+    transform: scale(0.95);
 }
 
 #send-button {
