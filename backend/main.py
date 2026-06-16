@@ -57,7 +57,11 @@ async def generate(
     model = sessions[id]
     
     stream = generator_wrapper(model, prompt, valid_files)
-    response = StreamingResponse(stream, media_type='text/event-stream')
+    response = StreamingResponse(
+        stream, 
+        media_type='text/event-stream',
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"}
+    )
     return response
 
 if __name__ == "__main__":
