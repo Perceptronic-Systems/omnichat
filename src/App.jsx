@@ -2,24 +2,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { TaskbarPopup, MENU_TREE } from './taskbar.jsx';
 import Chat from './pages/chat.jsx';
 
-// ─── File helpers ─────────────────────────────────────────────────────────────
-
-function getFileIcon(name) {
-  const ext = name.split(".").pop().toLowerCase();
-  if (["png","jpg","jpeg","gif","webp"].includes(ext)) return "🖼️";
-  if (ext === "pdf") return "📕";
-  if (["doc","docx","txt","md"].includes(ext)) return "📄";
-  if (["js","py","html","css","json"].includes(ext)) return "💻";
-  return "📁";
-}
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 const SESSION_ID = Math.floor(Math.random() * 100_000_000);
+export let activePage = 'chat';
 
 export default function App() {
   const [navOpen, setNavOpen]   = useState(false);
   const [popup, setPopup]       = useState(null); // { items, anchorRect }
+  const [activePage, setActivePage] = useState('chat');
+  const [messages, setMessages] = useState([]);
+
+  const switchPage = () => {
+    switch(activePage) {
+      case "chat":
+        return <Chat SESSION_ID={SESSION_ID} messages={messages} setMessages={setMessages} />;
+        break;
+      case "tools":
+        return <h1>Tools</h1>
+        break;
+    }
+  }
+
+  const setPage = (newPage) => {
+    setActivePage(newPage);
+  }
 
   // responsive nav: always show on wide screens
   useEffect(() => {
@@ -111,18 +119,19 @@ export default function App() {
         {/* Sidebar */}
         <div id="toolbar">
           {[
-          ["S","Schedule"],
-          ["T","Tool Calls"],
-          ["K","Knowledge Base"],
-          ["G","Graph"],
-          ["C","Console"]
-          ].map(([label, title]) => (
-            <button key={label} title={title}>{label}</button>
+          ["M", "Messages", "chat"],
+          ["S","Schedule", "schedule"],
+          ["T","Tool Calls", "tools"],
+          ["K","Knowledge Base", "knowledge_base"],
+          ["G","Graph", "graph"],
+          ["C","Console", "console"]
+          ].map(([label, title, id]) => (
+            <button key={label} title={title} onClick={() => setPage(id)}>{label}</button>
           ))}
         </div>
 
         {/* Main column */}
-        <Chat SESSION_ID={SESSION_ID} />
+        {switchPage()}
       </div>
     </div>
   );

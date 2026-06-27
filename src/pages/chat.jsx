@@ -14,9 +14,9 @@ function getFileIcon(name) {
   return "📁";
 }
 
-export default function Chat({ SESSION_ID }) {
+export default function Chat({ SESSION_ID, messages, setMessages}) {
+  console.log(messages);
   const [apiBase, setApiBase]   = useState(() => initApi());
-  const [messages, setMessages] = useState([]);
   const [input, setInput]       = useState("");
   const [files, setFiles]       = useState([]);
 
