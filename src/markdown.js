@@ -11,8 +11,7 @@ function parseInline(text) {
 }
 
 window.copyCode = function(button) {
-    const pre = button.nextElementSibling;
-    const code = pre.querySelector('code');
+    const code = button.nextElementSibling;
     const textToCopy = code.innerText;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
