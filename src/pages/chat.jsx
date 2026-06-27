@@ -14,8 +14,7 @@ function getFileIcon(name) {
   return "📁";
 }
 
-export default function Chat({ SESSION_ID, messages, setMessages}) {
-  console.log(messages);
+export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls}) {
   const [apiBase, setApiBase]   = useState(() => initApi());
   const [input, setInput]       = useState("");
   const [files, setFiles]       = useState([]);
@@ -58,9 +57,12 @@ export default function Chat({ SESSION_ID, messages, setMessages}) {
   
       try {
         let generated = "";
-        for await (const { token, status } of generateResponse(userText, SESSION_ID, userFiles, apiBase)) {
+        for await (const { token, status, tool_calls } of generateResponse(userText, SESSION_ID, userFiles, apiBase)) {
           generated += token;
           updateMessage(botId, { html: parseMarkdown(generated), status, streaming: true });
+          if (tool_calls && tool_calls.function?.name) {
+            setToolCalls(prev => [...prev, tool_calls]);
+          }
         }
         updateMessage(botId, { streaming: false });
       } catch (err) {

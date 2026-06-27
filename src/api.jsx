@@ -40,8 +40,8 @@ export async function* generateResponse(prompt, id, files = [], apiBase) {
       if (!line || !line.startsWith("data:")) continue;
       try {
         const json = JSON.parse(line.replace(/^data:\s*/, ""));
-        if (json.isDone || json.status === "Idle") return;
-        yield { token: json.token || "", status: json.status || "Retrieving Data" };
+        if (json.is_done || json.status === "idle") return;
+        yield { token: json.token || "", status: json.status || "Retrieving Data", tool_calls: json.tool_calls || null  };
       } catch { /* malformed chunk */ }
     }
   }
