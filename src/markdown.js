@@ -10,6 +10,24 @@ function parseInline(text) {
         .replace(/`(.*?)`/g, '<code>$1</code>');
 }
 
+window.copyCode = function(button) {
+    const pre = button.nextElementSibling;
+    const code = pre.querySelector('code');
+    const textToCopy = code.innerText;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        button.innerText = 'Copied!';
+        button.classList.add('copied');
+        
+        setTimeout(() => {
+            button.innerText = 'Copy';
+            button.classList.remove('copied');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
+};
+
 export function parseMarkdown(buffer) {
     let htmlContent = '';
     let inList = false;
@@ -22,9 +40,13 @@ export function parseMarkdown(buffer) {
         if (!inCodeBlock) {
             if (trimmed.startsWith('```')) {
                 inCodeBlock = true;
-                htmlContent += "<pre><code>";
+                // Wrap in a container and add the button element
+                htmlContent += `<div class="code-block-container">
+<button class="copy-code-btn" onclick="copyCode(this)">Copy</button>
+<pre><code>`;
                 continue;
-            } else if (trimmed.startsWith('* ' || trimmed.startsWith('- '))) {
+            } 
+            else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
                 if (!inList) {
                     htmlContent += '<ul>';
                     inList = true;
@@ -34,6 +56,7 @@ export function parseMarkdown(buffer) {
             } else if (trimmed === '') {
                 if (inList) {
                     htmlContent += '</ul>';
+                    inList = false;
                     continue;
                 }
             }
@@ -41,21 +64,23 @@ export function parseMarkdown(buffer) {
             if (trimmed.startsWith("# ")) {
                 htmlContent += `<h1>${parseInline(trimmed.substring(2))}</h1>`;
             } else if (trimmed.startsWith("## ")) {
-                htmlContent += `<h1>${parseInline(trimmed.substring(3))}</h1>`;
+                htmlContent += `<h2>${parseInline(trimmed.substring(3))}</h2>`;
             } else if (trimmed.startsWith("### ")) {
-                htmlContent += `<h1>${parseInline(trimmed.substring(4))}</h1>`;
+                htmlContent += `<h3>${parseInline(trimmed.substring(4))}</h3>`;
             } else if (trimmed.startsWith("#### ")) {
-                htmlContent += `<h1>${parseInline(trimmed.substring(5))}</h1>`;
+                htmlContent += `<h4>${parseInline(trimmed.substring(5))}</h4>`;
             } else if (trimmed.startsWith('> ')) {
                 htmlContent += `<blockquote>${parseInline(trimmed.substring(2))}</blockquote>`;
             } else {
-                htmlContent += `<p>${parseInline(trimmed)}</p>`;
+                if (trimmed !== '') {
+                    htmlContent += `<p>${parseInline(trimmed)}</p>`;
+                }
             }
         } else {
             if (trimmed.startsWith('```')) {
                 inCodeBlock = false;
-                htmlContent += "</code></pre>";
-            } else if (inCodeBlock) {
+                htmlContent += "</code></pre>\n</div>"; // Close the container div
+            } else {
                 let escapedLine = line
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
@@ -66,6 +91,6 @@ export function parseMarkdown(buffer) {
         }
     }
     if (inList) htmlContent += '</ul>';
-    if (inCodeBlock) htmlContent += '</code></pre>'
-    return htmlContent
+    if (inCodeBlock) htmlContent += '</code></pre>\n</div>';
+    return htmlContent;
 }

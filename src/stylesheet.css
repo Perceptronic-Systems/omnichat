@@ -257,6 +257,32 @@ body {
     transform: scale(0.95);
 }
 
+.code-block-container {
+    position: relative;
+    margin: 1em 0;
+}
+
+.copy-code-btn {
+    position: absolute;
+    top: 8px;
+    right: 0px;
+    padding: 4px 8px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.copy-code-btn:hover {
+    background: #444;
+}
+
+.copy-code-btn.copied {
+    background: #2889a7;
+    border-color: #287da7;
+}
+
 #send-button {
     height: 2.5rem;
     width: 10%;
