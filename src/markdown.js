@@ -41,9 +41,7 @@ export function parseMarkdown(buffer) {
             if (trimmed.startsWith('```')) {
                 inCodeBlock = true;
                 // Wrap in a container and add the button element
-                htmlContent += `<div class="code-block-container">
-<button class="copy-code-btn" onclick="copyCode(this)">Copy</button>
-<pre><code>`;
+                htmlContent += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>`;
                 continue;
             } 
             else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
@@ -79,7 +77,7 @@ export function parseMarkdown(buffer) {
         } else {
             if (trimmed.startsWith('```')) {
                 inCodeBlock = false;
-                htmlContent += "</code></pre>\n</div>"; // Close the container div
+                htmlContent += "</code></pre>";
             } else {
                 let escapedLine = line
                     .replace(/&/g, '&amp;')
