@@ -1,109 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-
-// ─── Markdown Parser ──────────────────────────────────────────────────────────
-
-function parseInline(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/`(.*?)`/g, "<code>$1</code>");
-}
-
-function parseMarkdown(buffer) {
-  let html = "";
-  let inList = false;
-  let inCodeBlock = false;
-
-  for (const line of buffer.split("\n")) {
-    if (line === undefined || line === null) continue;
-    const trimmed = line.trim();
-
-    if (!inCodeBlock) {
-      if (trimmed.startsWith("```")) {
-        inCodeBlock = true;
-        html += `<pre><button class="copy-code-btn" data-copy="true">Copy</button><code>`;
-        continue;
-      } else if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
-        if (!inList) { html += "<ul>"; inList = true; }
-        html += `<li>${parseInline(trimmed.substring(2))}</li>`;
-        continue;
-      } else if (trimmed === "") {
-        if (inList) { html += "</ul>"; inList = false; continue; }
-      }
-
-      if (trimmed.startsWith("# "))         html += `<h1>${parseInline(trimmed.substring(2))}</h1>`;
-      else if (trimmed.startsWith("## "))   html += `<h2>${parseInline(trimmed.substring(3))}</h2>`;
-      else if (trimmed.startsWith("### "))  html += `<h3>${parseInline(trimmed.substring(4))}</h3>`;
-      else if (trimmed.startsWith("#### ")) html += `<h4>${parseInline(trimmed.substring(5))}</h4>`;
-      else if (trimmed.startsWith("> "))    html += `<blockquote>${parseInline(trimmed.substring(2))}</blockquote>`;
-      else if (trimmed !== "")              html += `<p>${parseInline(trimmed)}</p>`;
-    } else {
-      if (trimmed.startsWith("```")) {
-        inCodeBlock = false;
-        html += "</code></pre>";
-      } else {
-        html += line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\n";
-      }
-    }
-  }
-  if (inList)      html += "</ul>";
-  if (inCodeBlock) html += "</code></pre>";
-  return html;
-}
-
-// ─── API / SSE ────────────────────────────────────────────────────────────────
-
-function initApi() {
-  let stored = localStorage.getItem("omnichat_api_url");
-  if (!stored) {
-    const def = "http://127.0.0.1:5014/api/";
-    let input = prompt("Please enter your API Base URL:", def);
-    stored = (!input || !input.trim()) ? def : input.trim();
-    if (!stored.endsWith("/")) stored += "/";
-    localStorage.setItem("omnichat_api_url", stored);
-  }
-  return stored;
-}
-
-function clearStoredApi() { localStorage.removeItem("omnichat_api_url"); }
-
-async function* generateResponse(prompt, id, files = [], apiBase) {
-  const formData = new FormData();
-  formData.append("id", id);
-  formData.append("prompt", prompt || "");
-  if (files.length > 0) {
-    files.forEach(f => formData.append("files", f));
-  } else {
-    formData.append("files", new Blob([]), "");
-  }
-
-  const response = await fetch(`${apiBase}generate`, { method: "POST", body: formData });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-  let buf = "";
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop();
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line || !line.startsWith("data:")) continue;
-      try {
-        const json = JSON.parse(line.replace(/^data:\s*/, ""));
-        if (json.isDone || json.status === "Idle") return;
-        yield { token: json.token || "", status: json.status || "Retrieving Data" };
-      } catch { /* malformed chunk */ }
-    }
-  }
-}
+import { parseMarkdown } from "./markdown.jsx";
+import { UserMessage, BotMessage } from "./messages.jsx";
+import { initApi, clearStoredApi, generateResponse } from "./api.jsx";
+import { TaskbarPopup, MENU_TREE } from './taskbar.jsx';
 
 // ─── File helpers ─────────────────────────────────────────────────────────────
 
@@ -114,110 +13,6 @@ function getFileIcon(name) {
   if (["doc","docx","txt","md"].includes(ext)) return "📄";
   if (["js","py","html","css","json"].includes(ext)) return "💻";
   return "📁";
-}
-
-// ─── Spinner ──────────────────────────────────────────────────────────────────
-
-const FRAMES = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"];
-
-function Spinner({ active }) {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setFrame(f => (f + 1) % FRAMES.length), 80);
-    return () => clearInterval(id);
-  }, [active]);
-  return <span className="status">{active ? FRAMES[frame] : ""}</span>;
-}
-
-// ─── Taskbar Menu ─────────────────────────────────────────────────────────────
-
-// Which items live under each top-level menu button
-const MENU_TREE = {
-  File: ["download_chat", "upload_chat"],
-  Edit: ["change_API_link"],
-  View: [],
-  Help: [],
-};
-
-// Floating popup anchored to a header button
-function TaskbarPopup({ items, anchorRect, onSelect, onClose }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const onKey   = (e) => { if (e.key === "Escape") onClose(); };
-    const onMouse = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    document.addEventListener("keydown",   onKey);
-    document.addEventListener("mousedown", onMouse);
-    return () => {
-      document.removeEventListener("keydown",   onKey);
-      document.removeEventListener("mousedown", onMouse);
-    };
-  }, [onClose]);
-
-  const isMobile = window.innerWidth <= 812;
-  const style = {
-    position: "fixed",
-    zIndex: 1000,
-    left: isMobile ? anchorRect.right  : anchorRect.left,
-    top:  isMobile ? anchorRect.top    : anchorRect.bottom,
-  };
-
-  return (
-    <div className="side-popup" ref={ref} style={style}>
-      {items.length === 0
-        ? <button className="task-button" disabled style={{ opacity: 0.4 }}>(empty)</button>
-        : items.map(item => (
-            <button key={item} className="task-button" onClick={() => onSelect(item)}>
-              {item.replace(/_/g, " ")}
-            </button>
-          ))
-      }
-    </div>
-  );
-}
-
-// ─── Message components ───────────────────────────────────────────────────────
-
-function BotMessage({ html, status, streaming }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const handler = (e) => {
-      const btn = e.target.closest("[data-copy]");
-      if (!btn) return;
-      const code = btn.nextElementSibling;
-      navigator.clipboard.writeText(code?.innerText || "").then(() => {
-        btn.textContent = "Copied!";
-        btn.classList.add("copied");
-        setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 2000);
-      });
-    };
-    el.addEventListener("click", handler);
-    return () => el.removeEventListener("click", handler);
-  }, []);
-
-  return (
-    <div className="message">
-      <div className="bot" ref={ref} dangerouslySetInnerHTML={{ __html: html }} />
-      {streaming && (
-        <div className="status-container">
-          <Spinner active={streaming} />
-          <span className="status">{status}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UserMessage({ html }) {
-  return (
-    <div className="message">
-      <div className="user" dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
-  );
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
@@ -379,7 +174,13 @@ export default function App() {
 
         {/* Sidebar */}
         <div id="toolbar">
-          {[["S","Schedule"],["T","Tool Calls"],["K","Knowledge Base"],["G","Graph"],["C","Console"]].map(([label, title]) => (
+          {[
+          ["S","Schedule"],
+          ["T","Tool Calls"],
+          ["K","Knowledge Base"],
+          ["G","Graph"],
+          ["C","Console"]
+          ].map(([label, title]) => (
             <button key={label} title={title}>{label}</button>
           ))}
         </div>
