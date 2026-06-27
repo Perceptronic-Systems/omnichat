@@ -190,7 +190,7 @@ export default function App() {
 
           {/* Chat history */}
           <div id="chat-history" className="section">
-            <h3>this is the beginning of your conversation with omnichat</h3>
+            <h3 className="initial-message">this is the beginning of your conversation with omnichat</h3>
             {messages.map(m =>
               m.role === "user"
                 ? <UserMessage key={m.id} html={m.html} />

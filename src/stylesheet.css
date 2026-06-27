@@ -316,7 +316,7 @@ body {
     min-height: 0;
 }
 
-#chat-history h3 {
+.initial-message {
     align-self: center;
     text-align: center;
     color: rgba(189, 198, 198, 0.3);
