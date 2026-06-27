@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>omnichat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <link rel="stylesheet" href="./src/stylesheet.css">
+</head>
+
+<body>
+
+    <div id="header">
+        <div id="nav-menu" style="visibility: hidden; opacity: 0">
+            <button class="task-button" id="taskbar-file" name="file">File</button>
+            <button class="task-button" id="taskbar-edit" name="edit">Edit</button>
+            <button class="task-button" id="taskbar-view" name="view">View</button>
+            <button class="task-button" id="taskbar-help" name="help">Help</button>
+        </div>
+
+        <button id="menu-toggle" aria-label="Toggle Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <h1 style="margin-left: auto;">omnichat</h1>
+    </div>
+
+    <div class="row" style="flex-grow: 1; min-height: 0; overflow: hidden;">
+        <div id="toolbar">
+            <button id="schedule">S</button>
+            <button id="tool-calls">T</button>
+            <button id="knowledge-base">K</button>
+            <button id="graph">G</button>
+            <button id="console">C</button>
+        </div>
+        
+        <div class="column" style="flex: 1;">
+            <div id="chat-history" class="section">
+                <h3>this is the beginning of your conversation with omnichat</h3>
+                <div id="eoc-spacer"></div>
+            </div>
+
+            <div id="user-input" class="section">
+                <div id="file-preview-container"></div>
+                
+                <div class="input-controls-row" style="display: flex; align-items: center; width: 100%;">
+                    <label for="add-media" class="media-btn-label">+</label>
+                    <input id="add-media" type="file" multiple style="display: none;">
+                    <textarea id="input-field"></textarea>
+                    <button id="send-button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./src/omnichat.js"></script>
+    <script type="module" src="./src/taskbar-popups.js"></script>
+    <script type="module" src="./src/app.js"></script>
+</body>
+
+</html>
