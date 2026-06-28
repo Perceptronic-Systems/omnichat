@@ -121,14 +121,12 @@ export default function App() {
         {/* Sidebar */}
         <div id="toolbar">
           {[
-          ["M", "Messages", "chat"],
-          ["S","Schedule", "schedule"],
-          ["T","Tool Calls", "tools"],
-          ["K","Knowledge Base", "knowledge_base"],
-          ["G","Graph", "graph"],
-          ["C","Console", "console"]
-          ].map(([label, title, id]) => (
-            <button key={label} title={title} onClick={() => setPage(id)}>{label}</button>
+          ["icons/chat.svg", "Chat", "chat"],
+          ["icons/calendar.svg","Schedule", "schedule"],
+          ["icons/wrench.svg","Tool Calls", "tools"],
+          ["icons/voice.svg", "Voice Chat", "voice"]
+          ].map(([path, title, id]) => (
+            <button key={id} title={title} onClick={() => setPage(id)}><img src={path} style={{width: '1.8rem', height: '1.8rem', filter: 'invert(100%)', opacity: "30%"}} alt={title} /></button>
           ))}
         </div>
 

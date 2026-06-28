@@ -134,13 +134,14 @@ body {
 
 #toolbar button {
     border-radius: 0px;
-    background-color:rgb(38, 40, 43);
+    background-color:rgb(30, 32, 35);
     color:rgb(112, 140, 170);
     border-style: none;
     margin-top: 0.4rem;
     margin-bottom: 0.4rem;
-    padding: 1rem;
-    position: initial;
+    align-content: center;
+    justify-items: center;
+    padding: 0.8rem;
 }
 
 #toolbar button:hover {
@@ -148,7 +149,10 @@ body {
     background-color:rgb(17, 38, 50);
     outline: solid 1px cyan;
     outline-offset: -1px;
-    padding-left: 1.4rem;
+}
+
+#toolbar button:hover img {
+    translate: -15%;
 }
 
 #toolbar button:active {
