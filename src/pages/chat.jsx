@@ -1,6 +1,6 @@
 import { parseMarkdown } from "../markdown.jsx";
 import { UserMessage, BotMessage } from "../messages.jsx";
-import { initApi, clearStoredApi, generateResponse } from "../api.jsx";
+import { generateResponse } from "../api.jsx";
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── File helpers ─────────────────────────────────────────────────────────────
@@ -14,8 +14,7 @@ function getFileIcon(name) {
   return "📁";
 }
 
-export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls}) {
-  const [apiBase, setApiBase]   = useState(() => initApi());
+export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, apiBase }) {
   const [input, setInput]       = useState("");
   const [files, setFiles]       = useState([]);
 

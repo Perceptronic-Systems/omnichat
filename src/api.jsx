@@ -1,10 +1,19 @@
+import { generateResponseWebLLM } from "./webllm-client.js";
+
 export function initApi() {
   let stored = localStorage.getItem("omnichat_api_url");
   if (!stored) {
-    const def = "http://127.0.0.1:5014/api/";
-    let input = prompt("Please enter your API Base URL:", def);
+    const def = "browser";
+    let input = prompt(
+      "Type 'browser' to run the model locally (free, default), or enter a custom API Base URL:",
+      def
+    );
     stored = (!input || !input.trim()) ? def : input.trim();
-    if (!stored.endsWith("/")) stored += "/";
+    if (stored.toLowerCase() === "browser") {
+      stored = "browser";
+    } else if (!stored.endsWith("/")) {
+      stored += "/";
+    }
     localStorage.setItem("omnichat_api_url", stored);
   }
   return stored;
@@ -12,7 +21,11 @@ export function initApi() {
 
 export function clearStoredApi() { localStorage.removeItem("omnichat_api_url"); }
 
-export async function* generateResponse(prompt, id, files = [], apiBase) {
+export async function* generateResponse(prompt, id, files = [], apiBase, history = [], onModelProgress) {
+  if (apiBase === "browser") {
+    yield* generateResponseWebLLM(prompt, history, onModelProgress);
+    return;
+  }
   const formData = new FormData();
   formData.append("id", id);
   formData.append("prompt", prompt || "");

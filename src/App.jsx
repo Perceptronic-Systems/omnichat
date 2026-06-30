@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TaskbarPopup, MENU_TREE } from './taskbar.jsx';
 import Chat from './pages/chat.jsx';
 import Tools from './pages/tools.jsx';
+import { initApi, clearStoredApi } from './api.jsx';
 
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
@@ -15,12 +16,20 @@ export default function App() {
   const [activePage, setActivePage] = useState('chat');
   const [messages, setMessages] = useState([]);
   const [toolCalls, setToolCalls] = useState([]);
+  const [apiBase, setApiBase]   = useState(() => initApi());
 
   const switchPage = () => {
     switch(activePage) {
       case "chat":
-        return <Chat SESSION_ID={SESSION_ID} messages={messages} setMessages={setMessages} setToolCalls={setToolCalls} />;
-        break;
+        return (
+          <Chat
+            SESSION_ID={SESSION_ID}
+            messages={messages}
+            setMessages={setMessages}
+            setToolCalls={setToolCalls}
+            apiBase={apiBase}              // <-- new
+          />
+        );
       case "tools":
         return <Tools toolCalls={toolCalls} />;
         break;
