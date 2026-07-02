@@ -11,6 +11,7 @@ function getFileIcon(name) {
   if (ext === "pdf") return "📕";
   if (["doc","docx","txt","md"].includes(ext)) return "📄";
   if (["js","py","html","css","json"].includes(ext)) return "💻";
+  if (["mp3","wav","ogg","m4a","flac","aac"].includes(ext)) return "🎵";
   return "📁";
 }
 

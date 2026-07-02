@@ -76,8 +76,12 @@ class llm():
                 # 1. Handle Vision Assets
                 if filename.endswith(('.png', '.jpg', '.jpeg', '.webp')):
                     images_payload.append(file_bytes)
+
+                # 2. Handle Audio Assets
+                elif filename.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac')):
+                    images_payload.append(file_bytes)
                 
-                # 2. Handle PDF Files
+                # 3. Handle PDF Files
                 elif filename.endswith('.pdf'):
                     try:
                         # Wrap the raw bytes in an in-memory binary stream
