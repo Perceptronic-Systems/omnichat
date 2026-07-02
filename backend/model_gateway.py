@@ -109,7 +109,7 @@ class llm():
 
         status = 'Loading model'
         print(status)
-        
+
         stream = client.chat(model=self.model,
                              messages=self.messages,
                              tools=tools_list,
