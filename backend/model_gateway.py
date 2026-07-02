@@ -62,53 +62,45 @@ class llm():
         self.messages = [{"role": "system", "content": prompt}]
         self.status = 'idle'
 
-    def generate(self, user_prompt: str, uploaded_files: List[UploadFile] = None):
+    def generate(self, user_prompt: str, uploaded_files: List[tuple] = None):
         uploaded_files = uploaded_files or []
-        
+
         if user_prompt != '' or uploaded_files:
             message_payload = {'role': 'user', 'content': user_prompt}
             images_payload = []
 
-            for file in uploaded_files:
-                file_bytes = file.file.read()
-                filename = file.filename.lower()
+            for filename, file_bytes in uploaded_files:
+                filename_lower = filename.lower()
 
-                # 1. Handle Vision Assets
-                if filename.endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                if filename_lower.endswith(('.png', '.jpg', '.jpeg', '.webp')):
                     images_payload.append(file_bytes)
 
-                # 2. Handle Audio Assets
-                elif filename.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac')):
+                elif filename_lower.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac')):
                     images_payload.append(file_bytes)
-                
-                # 3. Handle PDF Files
-                elif filename.endswith('.pdf'):
+
+                elif filename_lower.endswith('.pdf'):
                     try:
-                        # Wrap the raw bytes in an in-memory binary stream
                         pdf_stream = io.BytesIO(file_bytes)
                         pdf_reader = PdfReader(pdf_stream)
-                        
                         pdf_text = ""
                         for page in pdf_reader.pages:
                             text = page.extract_text()
                             if text:
                                 pdf_text += text + "\n"
-                        
                         if pdf_text.strip():
-                            message_payload['content'] += f"\n\n[Attached PDF Content - {file.filename}]:\n{pdf_text}"
+                            message_payload['content'] += f"\n\n[Attached PDF Content - {filename}]:\n{pdf_text}"
                         else:
-                            message_payload['content'] += f"\n\n[Attached PDF: {file.filename} (No readable text found, it might be a scanned image)]"
+                            message_payload['content'] += f"\n\n[Attached PDF: {filename} (No readable text found, it might be a scanned image)]"
                     except Exception as e:
-                        print(f"Error parsing PDF {file.filename}: {e}")
-                        message_payload['content'] += f"\n\n[Attached File: {file.filename} (Could not parse PDF text contents)]"
+                        print(f"Error parsing PDF {filename}: {e}")
+                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse PDF text contents)]"
 
-                # 3. Handle Text/Code Files
                 else:
                     try:
                         text_content = file_bytes.decode('utf-8')
-                        message_payload['content'] += f"\n\n[Attached File Context - {file.filename}]:\n{text_content}"
+                        message_payload['content'] += f"\n\n[Attached File Context - {filename}]:\n{text_content}"
                     except Exception as e:
-                        message_payload['content'] += f"\n\n[Attached File: {file.filename} (Could not parse text)]"
+                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse text)]"
 
             if images_payload:
                 message_payload['images'] = images_payload

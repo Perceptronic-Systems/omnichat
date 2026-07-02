@@ -44,21 +44,23 @@ async def generate(
     files: Optional[List[UploadFile]] = File(default=None)
 ):
     print(f"Fetching model for session: {id}...")
-    
+
     valid_files = []
     if files:
         for file in files:
             if file.filename != '':
-                valid_files.append(file)
+                # Read the bytes NOW, while the request/UploadFile is still alive
+                content = await file.read()
+                valid_files.append((file.filename, content))
 
     if not sessions.get(id):
         sessions[id] = llm('Omnichat')
-        
+
     model = sessions[id]
-    
+
     stream = generator_wrapper(model, prompt, valid_files)
     response = StreamingResponse(
-        stream, 
+        stream,
         media_type='text/event-stream',
         headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"}
     )
