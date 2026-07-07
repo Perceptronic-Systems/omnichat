@@ -164,10 +164,6 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
 
       const { kept, skippedCount } = filterDirectoryFiles(picked);
       if (kept.length > 0) setFiles(prev => [...prev, ...kept]);
-
-      if (skippedCount > 0) {
-        addMessage("bot", `<p><em>Filtered out ${skippedCount} file(s) from the folder (lockfiles, build/dependency dirs, binaries, etc.) — attached ${kept.length} file(s).</em></p>`);
-      }
     };
 
     const removeFile       = (i) => setFiles(prev => prev.filter((_, idx) => idx !== i));
