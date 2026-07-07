@@ -116,7 +116,8 @@ class llm():
                              messages=self.messages,
                              tools=tools_list,
                              think=False,
-                             stream=True)
+                             stream=True,
+                             options={"num_ctx": 32768})
         
         full_response = {'role': 'assistant', 'content': '', 'tool_calls': []}
         for chunk in stream:
