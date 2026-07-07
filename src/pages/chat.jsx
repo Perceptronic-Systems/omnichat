@@ -4,6 +4,14 @@ import { generateResponse } from "../api.jsx";
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── File helpers ─────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function getFileIcon(name) {
   const ext = name.split(".").pop().toLowerCase();
@@ -32,6 +40,7 @@ const IGNORED_FILE_PATTERNS = [
   /^\.env(\..*)?$/, /^\.env\.local$/,
   /^package-lock\.json$/, /^yarn\.lock$/, /^pnpm-lock\.yaml$/,
   /^Gemfile\.lock$/, /^poetry\.lock$/, /^Cargo\.lock$/,
+  /^LICENSE(\.(md|txt))?$/i,
   /\.lock$/, /\.log$/, /^Thumbs\.db$/, /^\.DS_Store$/,
   /\.min\.(js|css)$/, /\.map$/
 ];
@@ -130,7 +139,12 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
       setFiles([]);
   
       addMessage("user", parseMarkdown(userText));
-      if (userFiles.length > 0) addMessage("user", `<p><em>Attached ${userFiles.length} file(s)</em></p>`);
+      if (userFiles.length > 0) {
+        const fileListHtml = userFiles
+          .map(f => `<li>${getFileIcon(f.name)} ${escapeHtml(f.name)}</li>`)
+          .join("");
+        addMessage("user", `<p><em>Attached ${userFiles.length} file(s):</em></p><ul class="attached-file-list">${fileListHtml}</ul>`);
+      }
   
       const botId = addMessage("bot", "", { status: "Connecting", streaming: true });
   
