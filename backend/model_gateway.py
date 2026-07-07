@@ -66,7 +66,7 @@ class llm():
         uploaded_files = uploaded_files or []
 
         if user_prompt != '' or uploaded_files:
-            message_payload = {'role': 'user', 'content': user_prompt}
+            message_payload = {'role': 'user', 'content': ""}
             images_payload = []
 
             for filename, file_bytes in uploaded_files:
@@ -104,6 +104,8 @@ class llm():
 
             if images_payload:
                 message_payload['images'] = images_payload
+
+            message_payload['content'] += f"\n\n{user_prompt}"
 
             self.messages.append(message_payload)
 
