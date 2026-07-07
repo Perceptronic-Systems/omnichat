@@ -42,7 +42,7 @@ const IGNORED_FILE_PATTERNS = [
 // unrelated build/asset noise, so we skip them here.)
 const BINARY_EXTENSIONS = new Set([
   "exe","dll","so","dylib","bin","o","obj","class","jar","war",
-  "png","jpg","jpeg","gif","webp","bmp","ico",
+  "png","jpg","jpeg", "svg","gif","webp","bmp","ico",
   "mp3","wav","ogg","m4a","flac","aac","mp4","mov","avi","mkv","webm",
   "zip","tar","gz","tgz","rar","7z",
   "woff","woff2","ttf","eot","otf","pyc","wasm"
