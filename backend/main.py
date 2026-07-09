@@ -10,6 +10,10 @@ from typing import List, Optional
 import json
 import asyncio
 import uvicorn
+import atexit
+from mcp_server import cleanup_container
+
+atexit.register(cleanup_container)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

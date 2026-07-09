@@ -10,6 +10,23 @@ import os
 import difflib
 import requests
 from web_search import _searxng_available, search_searxng
+import docker
+
+docker_client = docker.from_env()
+
+sandbox_container = docker_client.containers.run(
+    image="ubuntu:latest",
+    command="tail -f /dev/null",
+    detach=True,
+    auto_remove=True,
+    network_mode="bridge"
+)
+
+def cleanup_container():
+    try:
+        sandbox_container.stop(timeout=1)
+    except Exception:
+        pass
 
 mcp = FastMCP('my local tools')
 
@@ -25,6 +42,15 @@ def get_files(path):
     return paths
 
 
+@mcp.tool()
+def execute_bash(command: str) -> str:
+    """
+    Executes a bash terminal command inside an isolated, session-scoped Linux environment and returns STDOUT/STDERR.
+    Use this to run terminal commands, inspect system files, install tools via apt/pip, or run scripts.
+    """
+    exec_result = sandbox_container.exec_run(f"bash -c {repr(command)}")
+    output = exec_result.output.decode("utf-8", errors="replace")
+    return output if output.strip() else "Command executed with no output."
 
 @mcp.tool()
 def search_web(query: str, limit: int = 8) -> list[dict]:
