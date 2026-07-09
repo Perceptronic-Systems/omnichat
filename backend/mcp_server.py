@@ -64,6 +64,23 @@ def execute_bash(command: str) -> str:
     output = exec_result.output.decode("utf-8", errors="replace")
     return output if output.strip() else "Command executed with no output."
 
+if _searxng_available():
+    @mcp.tool()
+    def search_web(query: str, limit: int = 8) -> list[dict]:
+        """
+        Search the web using SearXNG to get up-to-date information on a topic.
+    
+        Args:
+            query: The search terms or question to look up.
+            limit: The maximum number of search results to return (default 5, max 10).
+        Returns:
+            A list of dicts with 'title', 'url', and 'snippet' keys drawn from
+            the actual page content of each result.
+        """
+        return search_searxng(query, limit)
+else:
+    print("SearXNG not available — search_web tool not registered.")
+
 
 @mcp.tool()
 def evaluate(equation: str) -> str:
