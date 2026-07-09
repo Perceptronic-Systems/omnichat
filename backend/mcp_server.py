@@ -179,6 +179,7 @@ async def initialize_tools():
     available_tools = {}
     
     mcp_tools = await mcp.list_tools()
+        
     for tool in mcp_tools:
         tools_list.append({
             'type': 'function',
@@ -190,6 +191,8 @@ async def initialize_tools():
         })
         available_tools[tool.name] = tool.fn
 
+    print("Tools list:")
+    print(tools_list)
     return tools_list, available_tools
 
 
