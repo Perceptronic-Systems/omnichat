@@ -12,23 +12,31 @@ import requests
 from web_search import _searxng_available, search_searxng
 import docker
 
-docker_client = docker.from_env()
+mcp = FastMCP('my local tools')
 
-sandbox_container = docker_client.containers.run(
-    image="ubuntu:latest",
-    command="tail -f /dev/null",
-    detach=True,
-    auto_remove=True,
-    network_mode="bridge"
-)
+docker_client = None
+sandbox_container = None
+
+def get_sandbox():
+    global docker_client, sandbox_container
+    if sandbox_container is None:
+        docker_client = docker.from_env()
+        sandbox_container = docker_client.containers.run(
+            image="ubuntu:latest",
+            command="tail -f /dev/null",
+            detach=True,
+            auto_remove=True,
+            network_mode="bridge"
+        )
+    return sandbox_container
 
 def cleanup_container():
-    try:
-        sandbox_container.stop(timeout=1)
-    except Exception:
-        pass
-
-mcp = FastMCP('my local tools')
+    global sandbox_container
+    if sandbox_container:
+        try:
+            sandbox_container.stop(timeout=1)
+        except Exception:
+            pass
 
 knowledge_base_folder = "/etc/omnichat_knowledge_base"
 
@@ -47,25 +55,14 @@ def execute_bash(command: str) -> str:
     """
     Executes a bash terminal command inside an isolated, session-scoped Linux environment and returns STDOUT/STDERR.
     Use this to run terminal commands, inspect system files, install tools via apt/pip, or run scripts.
+    
+    Args:
+        command: The bash command string to execute in the terminal.
     """
-    exec_result = sandbox_container.exec_run(f"bash -c {repr(command)}")
+    container = get_sandbox()
+    exec_result = container.exec_run(f"bash -c {repr(command)}")
     output = exec_result.output.decode("utf-8", errors="replace")
     return output if output.strip() else "Command executed with no output."
-
-@mcp.tool()
-def search_web(query: str, limit: int = 8) -> list[dict]:
-    """
-    Search the web using SearXNG to get up-to-date information on a topic.
-
-    Args:
-        query: The search terms or question to look up.
-        limit: The maximum number of search results to return (default 5, max 10).
-
-    Returns:
-        A list of dicts with 'title', 'url', and 'snippet' keys drawn from
-        the actual page content of each result.
-    """
-    return search_searxng(query, limit)
 
 
 @mcp.tool()
@@ -180,7 +177,9 @@ def read_file(filepath: str) -> str:
 async def initialize_tools():
     tools_list = []
     available_tools = {}
-    for tool in await mcp.list_tools():
+    
+    mcp_tools = await mcp.list_tools()
+    for tool in mcp_tools:
         tools_list.append({
             'type': 'function',
             'function': {
@@ -189,8 +188,8 @@ async def initialize_tools():
                 'parameters': tool.parameters
             }
         })
+        available_tools[tool.name] = tool.fn
 
-    available_tools = {tool.name: tool.fn for tool in await mcp.list_tools()}
     return tools_list, available_tools
 
 
