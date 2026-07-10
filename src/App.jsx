@@ -134,10 +134,10 @@ export default function App() {
         <div id="toolbar">
           {[
           ["icons/chat.svg", "Chat", "chat"],
-          ["icons/calendar.svg","Schedule", "schedule"],
-          ["icons/wrench.svg","Tool Calls", "tools"],
           ["icons/voice.svg", "Voice Chat", "voice"],
-          ["icons/paperclip.svg", "Files", "files"]
+          ["icons/folders.svg", "Files", "files"],
+          ["icons/calendar.svg","Schedule", "schedule"],
+          ["icons/wrench.svg","Tool Calls", "tools"]
           ].map(([path, title, id]) => (
             <button key={id} title={title} onClick={() => setPage(id)}><img src={path} style={{width: '1.8rem', height: '1.8rem', filter: 'invert(100%)', opacity: "30%"}} alt={title} /></button>
           ))}
