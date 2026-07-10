@@ -14,15 +14,18 @@ function formatDate(epochSeconds) {
 }
 
 function fileIcon(entry) {
-  if (entry.type === "directory") return "📁";
-  if (entry.type === "symlink") return "🔗";
+  if (entry.type === "directory") return " ";  /* nf-fa-folder */
+  if (entry.type === "symlink") return " ";    /* nf-fa-link */
+  
   const ext = entry.name.includes(".") ? entry.name.split(".").pop().toLowerCase() : "";
-  if (["png","jpg","jpeg","gif","webp","bmp","svg"].includes(ext)) return "🖼️";
-  if (ext === "pdf") return "📕";
-  if (["doc","docx","txt","md"].includes(ext)) return "📄";
-  if (["js","py","html","css","json","sh","ts","jsx"].includes(ext)) return "💻";
-  if (["mp3","wav","ogg","m4a","flac","aac"].includes(ext)) return "🎵";
-  return "📄";
+  
+  if (["png","jpg","jpeg","gif","webp","bmp","svg"].includes(ext)) return "󰋩 "; /* nf-md-image */
+  if (ext === "pdf") return " ";                                              /* nf-fa-file_pdf_o */
+  if (["doc","docx","txt","md"].includes(ext)) return " ";                     /* nf-fa-file_text_o */
+  if (["js","py","html","css","json","sh","ts","jsx"].includes(ext)) return " ";/* nf-fa-code */
+  if (["mp3","wav","ogg","m4a","flac","aac"].includes(ext)) return " ";      /* nf-fa-file_audio_o */
+  
+  return " "; /* nf-fa-file_o (default) */
 }
 
 function joinPath(base, name) {
@@ -156,9 +159,9 @@ export default function Files({ apiBase }) {
     <div className="row" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div className="column" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <div className="section" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button onClick={() => setPath("/")} title="Root">🏠</button>
-          <button onClick={() => setPath(parentPath(path))} disabled={path === "/"} title="Up one level">⬆️</button>
-          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+          <button onClick={() => setPath("/")} title="Root"> </button>
+          <button onClick={() => setPath(parentPath(path))} disabled={path === "/"} title="Up one level"> </button>
+          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>,
             <span style={{ cursor: "pointer" }} onClick={() => setPath("/")}>root</span>
             {crumbs.map((part, i) => {
               const crumbPath = "/" + crumbs.slice(0, i + 1).join("/");
@@ -171,10 +174,10 @@ export default function Files({ apiBase }) {
             })}
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
-            <button onClick={() => load(path)} title="Refresh">🔄</button>
-            <button onClick={makeFolder} title="New folder">📁+</button>
+            <button onClick={() => load(path)} title="Refresh"> </button>
+            <button onClick={makeFolder} title="New folder">  </button>
             <label style={{ cursor: "pointer" }} title="Upload files">
-              ⬆️ Upload
+                Upload
               <input ref={uploadInputRef} type="file" multiple style={{ display: "none" }} onChange={handleUpload} />
             </label>
           </div>
@@ -200,9 +203,9 @@ export default function Files({ apiBase }) {
                     <td>{formatDate(entry.mtime)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       {entry.type !== "directory" && (
-                        <button onClick={() => downloadEntry(entry)} title="Download">⬇️</button>
+                        <button className="download-file" onClick={() => downloadEntry(entry)} title="Download"> </button>
                       )}
-                      <button onClick={() => deleteEntry(entry)} title="Delete">🗑️</button>
+                      <button className="delete-file" onClick={() => deleteEntry(entry)} title="Delete"> </button>
                     </td>
                   </tr>
                 ))}
@@ -216,7 +219,7 @@ export default function Files({ apiBase }) {
         <div className="column" style={{ width: "40%", minWidth: "280px", borderLeft: "1px solid rgba(255,255,255,0.1)", overflow: "auto" }}>
           <div className="section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong>{preview.name}</strong>
-            <button onClick={() => setPreview(null)}>✕</button>
+            <button onClick={() => setPreview(null)}> </button>
           </div>
           <div className="section" style={{ flex: 1, overflow: "auto" }}>
             {previewLoading && <p>Loading preview…</p>}
