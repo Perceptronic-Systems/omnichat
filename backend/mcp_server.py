@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import io
+import tarfile
 from fastmcp import FastMCP
 from sympy import sympify
 from typing import List, Dict, Any
@@ -37,6 +39,93 @@ def cleanup_container():
             sandbox_container.stop(timeout=1)
         except Exception:
             pass
+
+# ─── File manager (sandbox container) helpers ──────────────────────────────
+
+def fm_list_directory(path: str = "/"):
+    container = get_sandbox()
+    if not path.startswith("/"):
+        path = "/" + path
+    exit_code, output = container.exec_run(["ls", "-1AF", "--", path])
+    if exit_code != 0:
+        return {"error": output.decode("utf-8", errors="replace").strip() or f"Could not list '{path}'"}
+    entries = []
+    for name in output.decode("utf-8", errors="replace").splitlines():
+        if not name:
+            continue
+        is_dir = name.endswith("/")
+        entries.append({"name": name[:-1] if is_dir else name, "type": "directory" if is_dir else "file", "size": 0, "mtime": 0})
+    entries.sort(key=lambda e: (e["type"] != "directory", e["name"].lower()))
+    return {"path": path, "entries": entries}
+
+
+def fm_read_file(path: str, max_bytes: int = 200_000):
+    """Read a file's bytes from the sandbox container via a tar archive."""
+    container = get_sandbox()
+    if not path.startswith("/"):
+        path = "/" + path
+    try:
+        stream, stat_info = container.get_archive(path)
+    except docker.errors.NotFound:
+        return None, {"error": f"'{path}' not found"}
+    except Exception as e:
+        return None, {"error": str(e)}
+
+    tar_bytes = io.BytesIO(b"".join(stream))
+    with tarfile.open(fileobj=tar_bytes) as tar:
+        member = tar.getmembers()[0]
+        if member.isdir():
+            return None, {"error": f"'{path}' is a directory"}
+        f = tar.extractfile(member)
+        data = f.read(max_bytes + 1) if f else b""
+
+    truncated = len(data) > max_bytes
+    if truncated:
+        data = data[:max_bytes]
+    return data, {"name": os.path.basename(path.rstrip("/")), "size": stat_info.get("size"), "truncated": truncated}
+
+
+def fm_write_file(path: str, content: bytes):
+    """Write bytes to a file inside the sandbox container by uploading a tar archive."""
+    container = get_sandbox()
+    if not path.startswith("/"):
+        path = "/" + path
+    directory = os.path.dirname(path) or "/"
+    filename = os.path.basename(path)
+
+    tar_stream = io.BytesIO()
+    with tarfile.open(fileobj=tar_stream, mode="w") as tar:
+        info = tarfile.TarInfo(name=filename)
+        info.size = len(content)
+        tar.addfile(info, io.BytesIO(content))
+    tar_stream.seek(0)
+
+    container.exec_run(["mkdir", "-p", directory])
+    return container.put_archive(directory, tar_stream.getvalue())
+
+
+def fm_delete_path(path: str):
+    """Delete a file or directory inside the sandbox container."""
+    container = get_sandbox()
+    if not path.startswith("/"):
+        path = "/" + path
+    if path.strip("/") == "":
+        return {"error": "Refusing to delete root directory"}
+    exit_code, output = container.exec_run(["rm", "-rf", path])
+    if exit_code != 0:
+        return {"error": output.decode("utf-8", errors="replace").strip()}
+    return {"success": True}
+
+
+def fm_make_directory(path: str):
+    """Create a directory (and parents) inside the sandbox container."""
+    container = get_sandbox()
+    if not path.startswith("/"):
+        path = "/" + path
+    exit_code, output = container.exec_run(["mkdir", "-p", path])
+    if exit_code != 0:
+        return {"error": output.decode("utf-8", errors="replace").strip()}
+    return {"success": True}
 
 knowledge_base_folder = "/etc/omnichat_knowledge_base"
 

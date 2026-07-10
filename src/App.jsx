@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TaskbarPopup, MENU_TREE } from './taskbar.jsx';
 import Chat from './pages/chat.jsx';
 import Tools from './pages/tools.jsx';
+import Files from './pages/files.jsx';
 import { initApi, clearStoredApi } from './api.jsx';
 
 
@@ -33,6 +34,8 @@ export default function App() {
       case "tools":
         return <Tools toolCalls={toolCalls} />;
         break;
+      case "files":
+        return <Files apiBase={apiBase} />;
     }
   }
 
@@ -133,7 +136,8 @@ export default function App() {
           ["icons/chat.svg", "Chat", "chat"],
           ["icons/calendar.svg","Schedule", "schedule"],
           ["icons/wrench.svg","Tool Calls", "tools"],
-          ["icons/voice.svg", "Voice Chat", "voice"]
+          ["icons/voice.svg", "Voice Chat", "voice"],
+          ["icons/paperclip.svg", "Files", "files"]
           ].map(([path, title, id]) => (
             <button key={id} title={title} onClick={() => setPage(id)}><img src={path} style={{width: '1.8rem', height: '1.8rem', filter: 'invert(100%)', opacity: "30%"}} alt={title} /></button>
           ))}
