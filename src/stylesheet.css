@@ -508,7 +508,7 @@ blockquote { border-left: 4px solid #ccc;
 }
 
 /* ==========================================================================
-   File Manager Page Styles
+   File Manager Page Styles (Scoped to prevent chat leakage)
    ========================================================================== */
 
 /* Breadcrumbs & Navigation Toolbar */
@@ -523,8 +523,9 @@ blockquote { border-left: 4px solid #ccc;
     text-decoration: underline;
 }
 
-/* File Manager Controls/Buttons */
-.section button {
+/* File Manager Controls/Buttons - Specific to file actions table/toolbars */
+.file-manager-toolbar button,
+table button {
     background-color: rgb(24, 28, 33);
     border: 1px solid rgb(45, 50, 55);
     padding: 0.4rem 0.6rem;
@@ -535,13 +536,15 @@ blockquote { border-left: 4px solid #ccc;
     transition: all 0.2s ease;
 }
 
-.section button:hover:not(:disabled) {
+.file-manager-toolbar button:hover:not(:disabled),
+table button:hover:not(:disabled) {
     background-color: rgba(97, 150, 150, 0.15);
     border-color: #619696;
     color: white;
 }
 
-.section button:disabled {
+.file-manager-toolbar button:disabled,
+table button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
@@ -589,7 +592,6 @@ tbody tr:hover {
     background-color: rgba(255, 255, 255, 0.02);
 }
 
-/* Specific styling for actionable row items */
 td[style*="cursor: pointer"] {
     color: rgb(210, 210, 210);
 }
@@ -598,7 +600,6 @@ tbody tr:hover td[style*="cursor: pointer"] {
     color: rgb(45, 228, 228);
 }
 
-/* Actions Column (Download/Delete buttons inside row) */
 td button {
     margin-left: 0.25rem;
     padding: 0.2rem 0.4rem !important;
@@ -620,7 +621,6 @@ td button[title="Delete"]:hover {
     margin-bottom: 0;
 }
 
-/* Preview Content (Code / Text blocks) */
 .column[style*="width: 40%"] pre {
     border: none;
     background-color: rgb(12, 15, 18);
@@ -631,18 +631,17 @@ td button[title="Delete"]:hover {
     border-radius: 0;
 }
 
-/* Empty / Error state paragraphs */
-.section p {
+/* Only italicize the file preview empty/error text, NOT chat history */
+.column[style*="width: 40%"] p, 
+.file-manager-empty-state {
     font-style: italic;
     color: rgba(154, 162, 163, 0.7);
 }
 
-/* Responsive updates for File Manager */
 @media (max-width: 768px) {
     .row {
         flex-direction: column !important;
     }
-    
     .column[style*="width: 40%"] {
         width: 100% !important;
         border-left: none !important;
@@ -655,7 +654,6 @@ td button[title="Delete"]:hover {
    Nerd Font Glyphs Layout Adjustments
    ========================================================================== */
 
-/* Target the icon container elements or cells, keeping standard text elements clean */
 td[style*="cursor: pointer"] {
     font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
     display: table-cell;
@@ -669,8 +667,8 @@ td[style*="cursor: pointer"] {
     text-align: center;
 }
 
-/* Center glyphs perfectly inside all layout toolbars and control buttons */
-.section button {
+/* Target file manager specific action elements, avoiding global chat sections */
+.file-manager-toolbar button {
     font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
     font-size: 1.1rem;
     display: inline-flex;
@@ -682,7 +680,6 @@ td[style*="cursor: pointer"] {
     padding-right: 0.8rem;
 }
 
-/* File list row action buttons explicitly centered */
 .download-file, .delete-file {
     display: inline-flex;
     align-items: center;
@@ -693,7 +690,6 @@ td[style*="cursor: pointer"] {
     margin-left: 0.25rem;
 }
 
-/* Preserve inline text alignment for label uploads with text strings */
 .section label[title="Upload files"] {
     font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
     display: inline-flex;

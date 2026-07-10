@@ -158,7 +158,7 @@ export default function Files({ apiBase }) {
   return (
     <div className="row" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div className="column" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-        <div className="section" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div className="section file-manager-toolbar" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <button onClick={() => setPath("/")} title="Root"> </button>
           <button onClick={() => setPath(parentPath(path))} disabled={path === "/"} title="Up one level"> </button>
           <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>,
