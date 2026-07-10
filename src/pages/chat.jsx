@@ -24,10 +24,6 @@ function getFileIcon(name) {
 }
 
 // ─── Directory-upload filtering ────────────────────────────────────────────────
-// When a whole folder is attached we want to strip out anything that isn't
-// meaningful source/text content: VCS metadata, dependency/build folders,
-// lockfiles, env files, and binary/media formats.
-
 const IGNORED_DIR_NAMES = new Set([
   "node_modules", ".git", ".svn", ".hg", "dist", "build", "out", "target",
   "__pycache__", ".venv", "venv", "env", ".env", ".next", ".nuxt", "coverage",
@@ -45,10 +41,6 @@ const IGNORED_FILE_PATTERNS = [
   /\.min\.(js|css)$/, /\.map$/
 ];
 
-// Extensions we treat as "not useful text material" for a code-directory upload.
-// (Images/audio/video are handled fine for *single-file* attaches via the
-// multimodal path, but for a bulk directory attach they're almost always
-// unrelated build/asset noise, so we skip them here.)
 const BINARY_EXTENSIONS = new Set([
   "exe","dll","so","dylib","bin","o","obj","class","jar","war",
   "png","jpg","jpeg", "svg","gif","webp","bmp","ico",
@@ -57,8 +49,8 @@ const BINARY_EXTENSIONS = new Set([
   "woff","woff2","ttf","eot","otf","pyc","wasm"
 ]);
 
-const MAX_DIR_FILE_SIZE = 512 * 1024; // 512KB per file — skip huge/generated blobs
-const MAX_DIR_FILES = 400;            // sanity cap so we don't try to send thousands
+const MAX_DIR_FILE_SIZE = 512 * 1024; 
+const MAX_DIR_FILES = 400;            
 
 function shouldIgnorePath(relPath) {
   const parts = relPath.split("/");
@@ -85,8 +77,6 @@ function filterDirectoryFiles(fileList) {
       skippedCount++;
       continue;
     }
-    // Rewrap so the filename carries the relative path — this is what lets
-    // the backend/LLM see folder structure (it just uses filename as-is).
     kept.push(new File([f], rel, { type: f.type }));
     if (kept.length >= MAX_DIR_FILES) break;
   }
@@ -102,8 +92,6 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
   const chatEndRef      = useRef(null);
   const textareaRef     = useRef(null);
 
-  // webkitdirectory/directory aren't recognized React DOM props — set them
-  // imperatively so every browser picks up the folder-picker behavior.
   useEffect(() => {
     if (folderInputRef.current) {
       folderInputRef.current.setAttribute("webkitdirectory", "");
@@ -111,7 +99,6 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
     }
   }, []);
 
-  // auto-scroll
   const prevCountRef = useRef(0);
   useEffect(() => {
     if (messages.length > prevCountRef.current) {
@@ -166,8 +153,8 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
     const handleKeyDown    = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
     const handleFileChange = (e) => {
-      const picked = Array.from(e.target.files); // snapshot synchronously
-      e.target.value = "";                        // now safe to reset
+      const picked = Array.from(e.target.files); 
+      e.target.value = "";                        
       if (picked.length > 0) setFiles(prev => [...prev, ...picked]);
     };
 
@@ -181,6 +168,29 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
     };
 
     const removeFile       = (i) => setFiles(prev => prev.filter((_, idx) => idx !== i));
+
+    // ─── Drag and Drop Handlers ───────────────────────────────────────────────
+    const handleDragOver = (e) => {
+      e.preventDefault(); // Required to allow dropping
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const picked = Array.from(e.dataTransfer.files);
+        setFiles(prev => [...prev, ...picked]);
+        e.dataTransfer.clearData();
+      }
+    };
+
+    // ─── Clipboard Paste Handler ─────────────────────────────────────────────
+    const handlePaste = (e) => {
+      if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault(); // Stop file binary info or name string from filling the textarea
+        const picked = Array.from(e.clipboardData.files);
+        setFiles(prev => [...prev, ...picked]);
+      }
+    };
 
   return <div className="column" style={{ flex:1, minHeight:0, overflow:"hidden" }}>
     
@@ -196,7 +206,12 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
               </div>
     
               {/* Input area */}
-              <div id="user-input" className="section">
+              <div 
+                id="user-input" 
+                className="section"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
                 {files.length > 0 && (
                   <div id="file-preview-container">
                     {files.map((f, i) => (
@@ -233,6 +248,7 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
                   />
                   <button id="send-button" onClick={sendMessage}>Send</button>
                 </div>
