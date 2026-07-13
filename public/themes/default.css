@@ -1,0 +1,381 @@
+/* ==========================================================================
+   FONTS & TYPOGRAPHY
+   ========================================================================== */
+
+/* ==========================================================================
+   FONTS & TYPOGRAPHY
+   ========================================================================== */
+
+@font-face {
+  font-family: "AdwaitaMonoNerdFont";
+  src: url('../fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('../fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "AdwaitaMonoNerdFont";
+  src: url('../fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('../fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+    color: rgb(154, 162, 163);
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', Arial, Helvetica, sans-serif;
+}
+
+td[style*="cursor: pointer"],
+.file-preview-icon,
+.file-manager-toolbar button,
+.section label[title="Upload files"] {
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
+}
+
+.column[style*="width: 40%"] pre {
+    font-family: 'HackNerdFontMono', monospace;
+}
+
+h1, h2, h3, h4 {
+    color: rgb(182, 182, 182);
+}
+
+#header h1 {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+strong {
+    color: rgb(210, 210, 210);
+}
+
+.column[style*="width: 40%"] p, 
+.file-manager-empty-state {
+    font-style: italic;
+    color: rgba(154, 162, 163, 0.7);
+}
+
+/* ==========================================================================
+   THEME COLORS & SURFACES
+   ========================================================================== */
+
+body {
+    background-color: rgb(20, 25, 30);
+}
+
+.section {
+    background-color: rgba(45, 50, 50, 0.25);
+}
+
+#header {
+    border-bottom: rgb(36, 36, 36) solid 1px;
+    background-color: rgb(15, 20, 23);
+}
+
+.task-button {
+    border-style: none;
+    border-radius: 0px;
+    color: rgb(135, 135, 135);
+    background-color: rgba(45, 50, 50, 0.25);
+}
+
+.task-button:hover {
+    background-color: rgba(45, 50, 50, 0.5);
+}
+
+.task-button:active {
+    background-color: rgba(45, 50, 50, 0.7);
+}
+
+#menu-toggle {
+    background: transparent;
+    border: none;
+}
+
+#menu-toggle span {
+    background-color: rgb(154, 162, 163);
+    transition: all 0.3s ease;
+}
+
+.side-popup {
+    background-color: #484a4d;
+}
+
+#toolbar {
+    background-color: rgb(15, 20, 23);
+    border-right: solid 1px rgb(35, 38, 39);
+    border-top: solid 5px rgb(18, 18, 22);
+}
+
+#toolbar button {
+    border-radius: 0px;
+    background-color: rgb(30, 32, 35);
+    color: rgb(112, 140, 170);
+    border-style: none;
+}
+
+#toolbar button img {
+    filter: invert(100%);
+}
+
+#toolbar button:hover {
+    color: white;
+    background-color: rgb(17, 38, 50);
+    outline: solid 1px cyan;
+    outline-offset: -1px;
+}
+
+#toolbar button:hover img {
+    translate: -15%;
+}
+
+#toolbar button:active {
+    background-color: rgb(59, 99, 99);
+    padding-left: 1.2rem;
+}
+
+#input-field {
+    background-color: rgb(24, 25, 29);
+    color: white;
+    border-radius: 0px;
+    border-style: none;
+}
+
+#input-field:focus {
+    outline: none;
+    border: none;
+}
+
+.file-preview-badge {
+    background-color: #222428;
+    border: 1px solid #38485c;
+    border-radius: 0px;
+    color: #004085;
+}
+
+.file-preview-remove {
+    background: none;
+    border: none;
+    color: #dc3545;
+}
+
+.file-preview-remove:hover {
+    color: #a71d2a;
+}
+
+.media-btn-label {
+    background-color: #20242a;
+}
+
+.media-btn-label:hover {
+    background-color: #232933;
+    border: solid 1px rgb(26, 132, 132);
+}
+
+.media-btn-label:active {
+    transform: scale(0.95);
+}
+
+.copy-code-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+.copy-code-btn:hover {
+    background: #444;
+}
+
+.copy-code-btn.copied {
+    background: #2889a7;
+    border-color: #287da7;
+}
+
+#send-button {
+    background-color: rgb(45, 82, 124);
+    color: white;
+    border-style: none;
+    --cut: 12px;
+    clip-path: polygon(
+        0% 0%, calc(100% - var(--cut)) 0%, 
+        100% var(--cut), 100% 100%, 
+        calc(100% - var(--cut)) 100%, var(--cut) 100%, 
+        0% calc(100% - var(--cut)), 0% var(--cut)
+    );
+}
+
+#send-button:hover {
+    background-color: rgb(60, 108, 170);
+}
+
+#send-button:active {
+    background-color: rgb(9, 95, 145);
+}
+
+.initial-message {
+    color: rgba(189, 198, 198, 0.3);
+}
+
+.user {
+    border: 1px solid;
+    border-color: #619696;
+    color: #619696;
+    background-color: transparent;
+}
+
+pre, code {
+    background-color: rgb(21, 25, 25);
+    color: white;
+}
+
+pre {
+    border: solid 1px rgb(176, 176, 176);
+}
+
+blockquote {
+    border-left: 4px solid #ccc;
+    color: #484a4d;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.new-token {
+    color: rgb(45, 228, 228);
+    animation: fadeIn 0.07s ease-in forwards;
+}
+
+.status {
+    color: #619696;
+    opacity: 0.75;
+}
+
+#eoc-spacer {
+    background-color: transparent;
+}
+
+/* ==========================================================================
+   FILE MANAGER THEMING
+   ========================================================================== */
+
+.section span[style*="cursor: pointer"] {
+    color: #619696;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.section span[style*="cursor: pointer"]:hover {
+    color: rgb(45, 228, 228);
+    text-decoration: underline;
+}
+
+.file-manager-toolbar button,
+table button {
+    background-color: rgb(24, 28, 33);
+    border: 1px solid rgb(45, 50, 55);
+    transition: all 0.2s ease;
+}
+
+.file-manager-toolbar button:hover:not(:disabled),
+table button:hover:not(:disabled) {
+    background-color: rgba(97, 150, 150, 0.15);
+    border-color: #619696;
+    color: white;
+}
+
+.file-manager-toolbar button:disabled,
+table button:disabled {
+    opacity: 0.4;
+}
+
+.section label[title="Upload files"] {
+    background-color: rgb(45, 82, 124);
+    color: white;
+    border: 1px solid transparent;
+    transition: background-color 0.2s;
+}
+
+.section label[title="Upload files"]:hover {
+    background-color: rgb(60, 108, 170);
+}
+
+.hide-file-preview {
+    border-radius: 0;
+    background-color: rgb(38, 43, 48);
+    color: rgb(172, 29, 29);
+    border: rgb(56, 56, 56) solid 1px;
+}
+
+th {
+    color: rgb(182, 182, 182);
+    font-weight: bold;
+    border-bottom: 2px solid rgb(35, 40, 45);
+    text-transform: uppercase;
+}
+
+td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+td[style*="cursor: pointer"] {
+    color: rgb(210, 210, 210);
+}
+
+tbody tr:hover td[style*="cursor: pointer"] {
+    color: rgb(45, 228, 228);
+}
+
+td button[title="Delete"]:hover {
+    background-color: rgba(224, 85, 85, 0.15) !important;
+    border-color: #e05555 !important;
+}
+
+.column[style*="width: 40%"] {
+    background-color: rgb(16, 20, 24);
+}
+
+.column[style*="width: 40%"] .section:first-child {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.column[style*="width: 40%"] pre {
+    border: none;
+    background-color: rgb(12, 15, 18);
+    border-radius: 0;
+}
+
+@media (max-width: 768px) {
+    .column[style*="width: 40%"] {
+        border-left: none !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+@media (max-width: 512px) {
+    #nav-menu, .side-popup {
+        background-color: rgb(33, 37, 39);
+    }
+}

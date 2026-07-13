@@ -19,6 +19,30 @@ export default function App() {
   const [toolCalls, setToolCalls] = useState([]);
   const [apiBase, setApiBase]   = useState(() => initApi());
 
+  const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'default');
+
+  useEffect(() => {
+    let linkTag = document.getElementById('theme-stylesheet');
+
+    if (!linkTag) {
+      linkTag = document.createElement('link');
+      linkTag.id = 'theme-stylesheet';
+      linkTag.rel = 'stylesheet';
+      document.head.appendChild(linkTag);
+    }
+
+    // Ensure path points to /public/themes/<theme>.css
+    const basePath = import.meta.env.BASE_URL; // Default is '/'
+    const newPath = `${basePath}themes/${theme}.css`;
+
+    // Only update if the path actually changes
+    if (linkTag.getAttribute('href') !== newPath) {
+      linkTag.href = newPath;
+    }
+
+    localStorage.setItem('app_theme', theme);
+  }, [theme]);
+
   const switchPage = () => {
     switch(activePage) {
       case "chat":
@@ -72,7 +96,6 @@ export default function App() {
 
   const handleTaskbarClick = useCallback((label, buttonEl) => {
     const items = MENU_TREE[label];
-    // If the same menu is already open, close it
     if (popup && popup.label === label) { setPopup(null); return; }
 
     if (items.length === 0 && label !== "View" && label !== "Help") {
@@ -86,9 +109,15 @@ export default function App() {
 
   const handleMenuAction = useCallback((item) => {
     setPopup(null);
+
+    if (["default", "matrix", "cyberpunk", "minimal", "solar"].includes(item)) {
+      setTheme(item);
+      return;
+    }
+
     if (item === "change_API_link") resetApi();
-    else if (item === "download_chat") console.log("Development under progress, coming soon");
-    else if (item === "upload_chat")   console.log("Development under progress, coming soon");
+    else if (item === "download_chat") console.log("Coming soon");
+    else if (item === "upload_chat")   console.log("Coming soon");
   }, [resetApi]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -139,7 +168,7 @@ export default function App() {
           ["icons/calendar.svg","Schedule", "schedule"],
           ["icons/wrench.svg","Tool Calls", "tools"]
           ].map(([path, title, id]) => (
-            <button key={id} title={title} onClick={() => setPage(id)}><img src={path} style={{width: '1.8rem', height: '1.8rem', filter: 'invert(100%)', opacity: "30%"}} alt={title} /></button>
+            <button key={id} title={title} onClick={() => setPage(id)}><img src={path} style={{width: '1.8rem', height: '1.8rem', opacity: "30%"}} alt={title} /></button>
           ))}
         </div>
 

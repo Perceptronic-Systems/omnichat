@@ -1,0 +1,323 @@
+/* ==========================================================================
+   THEME: SOLARIZED DARK (REFINED)
+   ========================================================================== */
+
+/* ==========================================================================
+   FONTS & TYPOGRAPHY
+   ========================================================================== */
+
+@font-face {
+  font-family: "AdwaitaMonoNerdFont";
+  src: url('../fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('../fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  /* Solarized Palette Basics */
+  --base03:  #002b36; /* Background deep */
+  --base02:  #073642; /* Background highlighted / surface */
+  --base01:  #586e75; /* Optional secondary content */
+  --base00:  #657b83; /* Muted text */
+  --base0:   #839496; /* Default body text */
+  --base1:   #93a1a1; /* Emphasized text */
+  --base2:   #eee8d5; /* Primary light text */
+  --base3:   #fdf6e3; /* Brightest highlights */
+
+  /* Solarized Accents */
+  --yellow:  #b58900;
+  --orange:  #cb4b16;
+  --red:     #dc322f;
+  --magenta: #d33682;
+  --violet:  #6c71c4;
+  --blue:    #268bd2;
+  --cyan:    #2aa198;
+  --green:   #859900;
+
+  /* Mapped UI Tokens */
+  --bg-main:       var(--base03);
+  --bg-surface:    var(--base02);
+  --bg-darker:     #001e26;
+  --border-color:  #0f4c5c;
+}
+
+* {
+  color: var(--base0);
+  font-family: 'HackNerdFontMono', 'AdwaitaMonoNerdFont', monospace;
+}
+
+body { 
+  background-color: var(--bg-main); 
+}
+
+.section { 
+  background-color: rgba(7, 54, 66, 0.4); 
+  border: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   HEADER & NAVIGATION
+   ========================================================================== */
+
+#header {
+  background-color: var(--bg-darker);
+  border-bottom: 2px solid var(--yellow);
+}
+
+#header h1, h1, h2, h3, h4, strong { 
+  color: var(--base2); 
+}
+
+.task-button {
+  background-color: var(--bg-surface);
+  color: var(--base1);
+  border: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.task-button:hover { 
+  background-color: #0d4b5c; 
+  color: var(--base3); 
+}
+
+/* Mobile Toggle */
+#menu-toggle span {
+  background-color: var(--yellow);
+}
+
+/* ==========================================================================
+   TOOLBAR
+   ========================================================================== */
+
+#toolbar {
+  background-color: var(--bg-darker);
+  border-right: 1px solid var(--border-color);
+  border-top: 5px solid var(--yellow);
+}
+
+#toolbar button {
+  background-color: var(--bg-surface);
+  color: var(--cyan);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+#toolbar button img {
+  filter: invert(100%);
+}
+
+#toolbar button:hover {
+  color: var(--base3);
+  background-color: var(--border-color);
+  outline: 1px solid var(--yellow);
+  outline-offset: -1px;
+}
+
+#toolbar button:active {
+  background-color: var(--yellow);
+  color: var(--bg-main);
+}
+
+/* ==========================================================================
+   USER INPUT & CONTROLS
+   ========================================================================== */
+
+#input-field {
+  background-color: var(--bg-darker);
+  color: var(--base2);
+  border: 1px solid var(--border-color);
+}
+
+#input-field:focus {
+  border-color: var(--cyan);
+  outline: none;
+}
+
+/* Previews & Actions */
+.file-preview-badge {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+}
+
+.file-preview-remove {
+  color: var(--red);
+}
+
+.file-preview-remove:hover {
+  color: var(--orange);
+}
+
+.media-btn-label {
+  background-color: var(--bg-surface);
+  color: var(--yellow);
+  border: 1px solid var(--border-color);
+}
+
+.media-btn-label:hover {
+  background-color: var(--border-color);
+  color: var(--base3);
+}
+
+.copy-code-btn {
+  background: var(--bg-surface);
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+}
+
+.copy-code-btn:hover {
+  background: var(--cyan);
+  color: var(--bg-main);
+}
+
+.copy-code-btn.copied {
+  background: var(--green);
+  color: var(--bg-main);
+  border-color: var(--green);
+}
+
+#send-button {
+  background-color: var(--yellow);
+  color: var(--bg-darker);
+  font-weight: bold;
+  transition: background-color 0.15s ease;
+  --cut: 12px;
+  clip-path: polygon(
+      0% 0%, calc(100% - var(--cut)) 0%, 
+      100% var(--cut), 100% 100%, 
+      calc(100% - var(--cut)) 100%, var(--cut) 100%, 
+      0% calc(100% - var(--cut)), 0% var(--cut)
+  );
+}
+
+#send-button:hover { 
+  background-color: var(--orange); 
+  color: var(--base3); 
+}
+
+#send-button:active {
+  background-color: var(--red);
+}
+
+/* ==========================================================================
+   CHAT MESSAGES & CHAT ENGINE
+   ========================================================================== */
+
+.initial-message {
+  color: var(--base01);
+}
+
+.user {
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  background-color: rgba(42, 161, 152, 0.08);
+}
+
+.bot {
+  color: var(--base1);
+}
+
+pre, code {
+  background-color: var(--bg-darker);
+  color: var(--green);
+}
+
+pre { 
+  border: 1px solid var(--border-color); 
+}
+
+blockquote {
+  border-left: 4px solid var(--blue);
+  color: var(--base0);
+  background-color: rgba(38, 139, 210, 0.05);
+}
+
+.new-token { 
+  color: var(--yellow); 
+}
+
+.status {
+  color: var(--cyan);
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   FILE MANAGER & DATA TABLES
+   ========================================================================== */
+
+.section span[style*="cursor: pointer"] {
+  color: var(--blue);
+}
+
+.section span[style*="cursor: pointer"]:hover {
+  color: var(--cyan);
+}
+
+.file-manager-toolbar button, table button {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--base1);
+}
+
+.file-manager-toolbar button:hover:not(:disabled), table button:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.section label[title="Upload files"] {
+  background-color: var(--blue);
+  color: var(--base3);
+}
+
+.section label[title="Upload files"]:hover {
+  background-color: #1e6fa8;
+}
+
+th {
+  color: var(--yellow);
+  border-bottom: 2px solid var(--border-color);
+}
+
+td { 
+  border-bottom: 1px solid rgba(147, 161, 161, 0.1); 
+}
+
+tbody tr:hover { 
+  background-color: rgba(7, 54, 66, 0.8); 
+}
+
+td[style*="cursor: pointer"] {
+  color: var(--base2);
+}
+
+tbody tr:hover td[style*="cursor: pointer"] {
+  color: var(--cyan);
+}
+
+td button[title="Delete"]:hover {
+  background-color: rgba(220, 50, 47, 0.2) !important;
+  border-color: var(--red) !important;
+  color: var(--red) !important;
+}
+
+/* File Preview Side Panel */
+.column[style*="width: 40%"] {
+  background-color: var(--bg-darker);
+  border-left: 1px solid var(--border-color) !important;
+}
+
+.column[style*="width: 40%"] .section:first-child {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.column[style*="width: 40%"] pre {
+  border: none;
+  background-color: #00161c;
+}

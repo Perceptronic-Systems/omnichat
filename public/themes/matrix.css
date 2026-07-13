@@ -1,0 +1,339 @@
+/* ==========================================================================
+   THEME: MATRIX / HACKER TERMINAL
+   ========================================================================== */
+
+/* ==========================================================================
+   FONTS & TYPOGRAPHY
+   ========================================================================== */
+
+@font-face {
+  font-family: "AdwaitaMonoNerdFont";
+  src: url('../fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('../fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  /* Matrix Color Palette */
+  --matrix-black:    #020b04; /* Pitch-black with slight green tint */
+  --matrix-bg:       #051408; /* Deep terminal surface */
+  --matrix-surface:  #0a210f; /* Elevated panel surface */
+  
+  --matrix-green-dim:#195c27; /* Muted borders & secondary text */
+  --matrix-green:    #00ff41; /* Classic phosphor green */
+  --matrix-bright:   #80ff9f; /* Highlighting text */
+  --matrix-white:    #d0ffd9; /* Near-white green tint */
+  
+  --matrix-amber:    #ffb700; /* Secondary action highlight */
+  --matrix-red:      #ff2b2b; /* Alert/Delete actions */
+
+  /* Text & Border Mapping */
+  --border-color:    var(--matrix-green-dim);
+  --glow-green:      0 0 8px rgba(0, 255, 65, 0.4);
+  --glow-bright:     0 0 12px rgba(0, 255, 65, 0.7);
+}
+
+* {
+  color: var(--matrix-green);
+  font-family: 'HackNerdFontMono', 'AdwaitaMonoNerdFont', monospace;
+}
+
+body { 
+  background-color: var(--matrix-black); 
+}
+
+.section { 
+  background-color: rgba(10, 33, 15, 0.5); 
+  border: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   HEADER & NAVIGATION
+   ========================================================================== */
+
+#header {
+  background-color: var(--matrix-bg);
+  border-bottom: 1px solid var(--matrix-green);
+  box-shadow: 0 1px 8px rgba(0, 255, 65, 0.2);
+}
+
+#header h1, h1, h2, h3, h4, strong { 
+  color: var(--matrix-bright); 
+  text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+.task-button {
+  background-color: var(--matrix-surface);
+  color: var(--matrix-green-dim);
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.task-button:hover { 
+  background-color: rgba(0, 255, 65, 0.15); 
+  color: var(--matrix-green); 
+  box-shadow: inset 0 -2px 0 var(--matrix-green);
+}
+
+/* Mobile Toggle */
+#menu-toggle span {
+  background-color: var(--matrix-green);
+  box-shadow: var(--glow-green);
+}
+
+/* ==========================================================================
+   TOOLBAR
+   ========================================================================== */
+
+#toolbar {
+  background-color: var(--matrix-bg);
+  border-right: 1px solid var(--border-color);
+  border-top: 5px solid var(--matrix-green);
+}
+
+#toolbar button {
+  background-color: var(--matrix-surface);
+  color: var(--matrix-green);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+#toolbar button img {
+  filter: invert(100%) sepia(100%) saturate(1000%) hue-rotate(80deg);
+}
+
+#toolbar button:hover {
+  color: var(--matrix-black);
+  background-color: var(--matrix-green);
+  box-shadow: var(--glow-bright);
+  outline: none;
+}
+
+#toolbar button:active {
+  background-color: var(--matrix-bright);
+}
+
+/* ==========================================================================
+   USER INPUT & CONTROLS
+   ========================================================================== */
+
+#input-field {
+  background-color: var(--matrix-black);
+  color: var(--matrix-white);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#input-field:focus {
+  border-color: var(--matrix-green);
+  box-shadow: var(--glow-green);
+  outline: none;
+}
+
+/* Previews & Actions */
+.file-preview-badge {
+  background-color: var(--matrix-surface);
+  border: 1px solid var(--matrix-green);
+  color: var(--matrix-green);
+}
+
+.file-preview-remove {
+  color: var(--matrix-red);
+}
+
+.file-preview-remove:hover {
+  color: #ff8080;
+  text-shadow: 0 0 6px var(--matrix-red);
+}
+
+.media-btn-label {
+  background-color: var(--matrix-surface);
+  color: var(--matrix-green);
+  border: 1px solid var(--border-color);
+}
+
+.media-btn-label:hover {
+  background-color: rgba(0, 255, 65, 0.15);
+  border-color: var(--matrix-green);
+  box-shadow: var(--glow-green);
+}
+
+.copy-code-btn {
+  background: var(--matrix-surface);
+  color: var(--matrix-green);
+  border: 1px solid var(--matrix-green);
+}
+
+.copy-code-btn:hover {
+  background: var(--matrix-green);
+  color: var(--matrix-black);
+  box-shadow: var(--glow-green);
+}
+
+.copy-code-btn.copied {
+  background: var(--matrix-amber);
+  color: var(--matrix-black);
+  border-color: var(--matrix-amber);
+}
+
+#send-button {
+  background-color: var(--matrix-green);
+  color: var(--matrix-black);
+  font-weight: bold;
+  box-shadow: var(--glow-green);
+  transition: all 0.15s ease;
+  --cut: 12px;
+  clip-path: polygon(
+      0% 0%, calc(100% - var(--cut)) 0%, 
+      100% var(--cut), 100% 100%, 
+      calc(100% - var(--cut)) 100%, var(--cut) 100%, 
+      0% calc(100% - var(--cut)), 0% var(--cut)
+  );
+}
+
+#send-button:hover { 
+  background-color: var(--matrix-bright); 
+  box-shadow: var(--glow-bright);
+}
+
+#send-button:active {
+  background-color: var(--matrix-amber);
+}
+
+/* ==========================================================================
+   CHAT MESSAGES & CHAT ENGINE
+   ========================================================================== */
+
+.initial-message {
+  color: var(--matrix-green-dim);
+}
+
+.user {
+  border: 1px solid var(--matrix-green);
+  color: var(--matrix-bright);
+  background-color: rgba(0, 255, 65, 0.05);
+  box-shadow: var(--glow-green);
+}
+
+.bot {
+  color: var(--matrix-green);
+}
+
+pre, code {
+  background-color: #010502;
+  color: var(--matrix-white);
+}
+
+pre { 
+  border: 1px solid var(--border-color); 
+  box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.1);
+}
+
+blockquote {
+  border-left: 4px solid var(--matrix-amber);
+  color: var(--matrix-bright);
+  background-color: rgba(255, 183, 0, 0.04);
+}
+
+.new-token { 
+  color: var(--matrix-bright);
+  text-shadow: var(--glow-green);
+}
+
+.status {
+  color: var(--matrix-green-dim);
+}
+
+/* ==========================================================================
+   FILE MANAGER & DATA TABLES
+   ========================================================================== */
+
+.section span[style*="cursor: pointer"] {
+  color: var(--matrix-bright);
+}
+
+.section span[style*="cursor: pointer"]:hover {
+  color: var(--matrix-green);
+  text-shadow: var(--glow-green);
+}
+
+.file-manager-toolbar button, table button {
+  background-color: var(--matrix-surface);
+  border: 1px solid var(--border-color);
+  color: var(--matrix-green);
+}
+
+.file-manager-toolbar button:hover:not(:disabled), table button:hover:not(:disabled) {
+  border-color: var(--matrix-green);
+  color: var(--matrix-black);
+  background-color: var(--matrix-green);
+  box-shadow: var(--glow-green);
+}
+
+.file-manager-toolbar button:disabled, table button:disabled {
+  opacity: 0.25;
+}
+
+.section label[title="Upload files"] {
+  background-color: var(--matrix-surface);
+  color: var(--matrix-green);
+  border: 1px solid var(--matrix-green);
+  box-shadow: var(--glow-green);
+}
+
+.section label[title="Upload files"]:hover {
+  background-color: var(--matrix-green);
+  color: var(--matrix-black);
+}
+
+th {
+  color: var(--matrix-bright);
+  border-bottom: 2px solid var(--matrix-green);
+  text-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+}
+
+td { 
+  border-bottom: 1px solid rgba(0, 255, 65, 0.15); 
+}
+
+tbody tr:hover { 
+  background-color: rgba(0, 255, 65, 0.08); 
+}
+
+td[style*="cursor: pointer"] {
+  color: var(--matrix-white);
+}
+
+tbody tr:hover td[style*="cursor: pointer"] {
+  color: var(--matrix-green);
+  text-shadow: var(--glow-green);
+}
+
+td button[title="Delete"]:hover {
+  background-color: rgba(255, 43, 43, 0.2) !important;
+  border-color: var(--matrix-red) !important;
+  color: var(--matrix-red) !important;
+  box-shadow: 0 0 8px rgba(255, 43, 43, 0.5) !important;
+}
+
+/* File Preview Side Panel */
+.column[style*="width: 40%"] {
+  background-color: var(--matrix-black);
+  border-left: 1px solid var(--border-color) !important;
+}
+
+.column[style*="width: 40%"] .section:first-child {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.column[style*="width: 40%"] pre {
+  border: none;
+  background-color: #000000;
+}

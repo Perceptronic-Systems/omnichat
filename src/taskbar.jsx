@@ -4,6 +4,7 @@ export const MENU_TREE = {
   File: ["download_chat", "upload_chat"],
   Edit: ["change_API_link"],
   View: [],
+  Theme: ["default", "matrix", "cyberpunk", "minimal", "solar"],
   Help: [],
 };
 

@@ -1,0 +1,105 @@
+/* ==========================================================================
+   THEME: MINIMAL
+   ========================================================================== */
+
+/* ==========================================================================
+   FONTS & TYPOGRAPHY
+   ========================================================================== */
+
+@font-face {
+  font-family: "AdwaitaMonoNerdFont";
+  src: url('../fonts/AdwaitaMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HackNerdFontMono";
+  src: url('../fonts/HackNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --bg-main: #eceff4;
+  --bg-surface: #e5e9f0;
+  --bg-elevated: #d8dee9;
+  --text-main: #2e3440;
+  --text-muted: #4c566a;
+  --accent-blue: #5e81ac;
+  --accent-teal: #88c0d0;
+  --border-color: #d8dee9;
+}
+
+* {
+  color: var(--text-main);
+  font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', sans-serif;
+}
+
+body { background-color: var(--bg-main); }
+.section { background-color: var(--bg-surface); }
+
+#header {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+}
+#header h1, h1, h2, h3, h4, strong { color: #2e3440; }
+
+.task-button {
+  background-color: var(--bg-elevated);
+  color: var(--text-muted);
+  border: none;
+}
+.task-button:hover { background-color: #c8d0e0; color: var(--text-main); }
+
+#toolbar {
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-color);
+  border-top: 5px solid var(--accent-blue);
+}
+#toolbar button {
+  background-color: var(--bg-elevated);
+  color: var(--text-muted);
+  border: none;
+}
+
+#toolbar button:hover {
+  color: #2e3440;
+  background-color: var(--accent-teal);
+  outline: none;
+}
+
+#input-field {
+  background-color: #ffffff;
+  color: #2e3440;
+  border: 1px solid var(--border-color);
+}
+
+#send-button {
+  background-color: var(--accent-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 1rem;
+}
+#send-button:hover { background-color: #81a1c1; }
+
+.user {
+  border: 1px solid var(--accent-blue);
+  color: var(--accent-blue);
+  background-color: rgba(94, 129, 172, 0.08);
+}
+
+pre, code {
+  background-color: #e5e9f0;
+  color: #2e3440;
+}
+pre { border: 1px solid var(--border-color); }
+
+.new-token { color: #88c0d0; }
+
+th {
+  color: var(--accent-blue);
+  border-bottom: 2px solid var(--border-color);
+}
+td { border-bottom: 1px solid var(--border-color); }
+tbody tr:hover { background-color: var(--bg-elevated); }
