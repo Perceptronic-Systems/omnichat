@@ -565,6 +565,13 @@ table button:disabled {
     background-color: rgb(60, 108, 170);
 }
 
+.hide-file-preview {
+    border-radius: 0;
+    background-color: rgb(38, 43, 48);
+    color: rgb(172, 29, 29);
+    border: rgb(56, 56, 56) solid 1px;
+}
+
 /* File List Table */
 table {
     margin-top: 0.5rem;
