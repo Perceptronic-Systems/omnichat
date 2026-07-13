@@ -472,6 +472,8 @@ blockquote { border-left: 4px solid #ccc;
     #toolbar {
         opacity: 0;
         visibility: hidden;
+        height: 0;
+        width: 0;
         width: 0px;
         margin: 0px;
         padding: 0px;
