@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 export const MENU_TREE = {
   File: ["download_chat", "upload_chat"],
   Edit: ["change_API_link"],
-  View: [],
+  View: ["chat", "voice", "files", "schedule", "tools"],
   Theme: ["default", "matrix", "cyberpunk", "minimal", "solar"],
   Help: [],
 };

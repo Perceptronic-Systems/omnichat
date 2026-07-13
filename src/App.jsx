@@ -108,10 +108,17 @@ export default function App() {
   }, [popup]);
 
   const handleMenuAction = useCallback((item) => {
-    setPopup(null);
+  setPopup(null);
 
-    if (["default", "matrix", "cyberpunk", "minimal", "solar"].includes(item)) {
-      setTheme(item);
+  // 1. Handle Theme Selection
+  if (["default", "matrix", "cyberpunk", "minimal", "solar"].includes(item)) {
+    setTheme(item);
+    return;
+  }
+
+  const validPages = ["chat", "voice", "files", "schedule", "tools"];
+    if (validPages.includes(item)) {
+      setPage(item);
       return;
     }
 
