@@ -6,6 +6,7 @@ import tomllib
 import re
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,31 @@ if os.path.exists(config_path):
         print("Missing config attribute.")
         print(e)
 
+# Normalize once: whatever shape the config value came in (with/without a
+# trailing slash, with/without a stray "/search" already appended), reduce it
+# to a clean base with exactly one trailing slash. Everything downstream uses
+# urljoin() against this base instead of string interpolation, so it can't
+# accidentally double up path segments again.
+SEARXNG_API = SEARXNG_API.rstrip("/")
+if SEARXNG_API.endswith("/search"):
+    SEARXNG_API = SEARXNG_API[: -len("/search")]
+SEARXNG_API = SEARXNG_API + "/"
+
+
 def _searxng_available() -> bool:
     try:
-        resp = requests.get(f"{SEARXNG_API}healthz", timeout=3)
+        # Not every SearXNG deployment exposes /healthz, but /search always
+        # exists (it's the endpoint we actually depend on), so check that
+        # directly with a cheap throwaway query.
+        resp = requests.get(
+            urljoin(SEARXNG_API, "search"),
+            params={"q": "ping", "format": "json"},
+            timeout=3,
+        )
         return resp.status_code == 200
     except requests.exceptions.RequestException:
         return False
+
 
 def _tokenize(text: str) -> list[str]:
     return _WORD_RE.findall(text.lower())
@@ -59,7 +79,7 @@ def _tokenize(text: str) -> list[str]:
 
 def _searxng_query(query: str, num_results: int) -> list[dict]:
     resp = _session.get(
-        f"{SEARXNG_API}/search",
+        urljoin(SEARXNG_API, "search"),
         params={"q": query, "format": "json", "language": "en"},
         timeout=5,
     )
@@ -243,3 +263,31 @@ def search_searxng(query: str, limit: int = 8) -> list[dict]:
         query, time.time() - start, len(candidates), len(output),
     )
     return output
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+
+    print(f"Using SEARXNG_API = {SEARXNG_API!r}")
+    print(f"Available: {_searxng_available()}")
+
+    parser = argparse.ArgumentParser(description="Test search_searxng directly")
+    parser.add_argument("query", nargs="?", default="latest python 3.13 features",
+                         help="Search query to test")
+    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--json", action="store_true", help="print raw JSON instead of pretty text")
+    args = parser.parse_args()
+
+    t0 = time.time()
+    results = search_searxng(args.query, args.limit)
+    elapsed = time.time() - t0
+
+    if args.json:
+        print(json.dumps(results, indent=2))
+    else:
+        print(f"\nQuery: {args.query!r}  |  {len(results)} results in {elapsed:.2f}s\n{'-'*70}")
+        for i, r in enumerate(results, 1):
+            print(f"[{i}] {r['title']}\n    {r['url']}\n    {r['snippet']}\n")
