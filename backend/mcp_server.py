@@ -150,17 +150,24 @@ def get_files(path):
 
 
 @mcp.tool()
-def execute_bash(command: str) -> str:
+def execute_bash(command: str, timeout: int = 30) -> str:
     """
     Executes a bash terminal command inside an isolated, session-scoped Linux environment and returns STDOUT/STDERR.
     Use this to run terminal commands, inspect system files, install tools via apt/pip, or run scripts.
-    
+
     Args:
         command: The bash command string to execute in the terminal.
+        timeout: Max seconds to allow the command to run before it is killed (default 30).
     """
     container = get_sandbox()
-    exec_result = container.exec_run(f"bash -c {repr(command)}")
+    # Wrap the command with `timeout` so a hung/long-running process gets killed
+    # inside the container itself, rather than blocking the exec_run call forever.
+    wrapped = f"timeout -k 2 {int(timeout)} bash -c {repr(command)}"
+    exec_result = container.exec_run(f"bash -c {repr(wrapped)}")
     output = exec_result.output.decode("utf-8", errors="replace")
+
+    if exec_result.exit_code == 124:
+        return f"[Command timed out after {timeout}s]\n{output}"
     return output if output.strip() else "Command executed with no output."
 
 if _searxng_available():
