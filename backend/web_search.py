@@ -4,10 +4,36 @@ from bs4 import BeautifulSoup
 import os
 import tomllib
 import re
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
 
 SEARXNG_API = "http://localhost:8080/"
-blocked_personal = []
-BANNED_WORDS = []
+FETCH_TIMEOUT = 4
+FETCH_WORKERS = 10
+RESULTS_TO_FETCH = 10
+MIN_CHUNK_CHARS = 200
+MAX_CHUNK_CHARS = 1000
+MAX_CHUNKS_PER_PAGE = 20
+
+_session = requests.Session()
+_session.headers.update({"User-Agent": "Mozilla/5.0 (compatible; SearchBot/1.0)"})
+
+try:
+    from rank_bm25 import BM25Okapi
+    _HAS_BM25 = True
+except ImportError:
+    _HAS_BM25 = False
+
+try:
+    import trafilatura
+    _HAS_TRAFILATURA = True
+except ImportError:
+    _HAS_TRAFILATURA = False
+    from bs4 import BeautifulSoup
+
+_WORD_RE = re.compile(r"[a-z0-9]+")
 
 config_path = os.path.expanduser("/etc/omnichat/config.toml")
 
@@ -27,145 +53,193 @@ def _searxng_available() -> bool:
     except requests.exceptions.RequestException:
         return False
 
+def _tokenize(text: str) -> list[str]:
+    return _WORD_RE.findall(text.lower())
 
-def search_searxng(query: str, limit: int = 5) -> list[dict]:
-    limit = max(3, min(limit, 12))
 
-    # --- Query filtering ---
-    query_lower = query.lower()
-    if any(word in query_lower for word in blocked_personal):
-        print(f"WARNING: Blocked personal query: \"{query}\"")
-        return []
-    if any(word in query_lower for word in BANNED_WORDS):
-        print(f"WARNING: Blocked banned-word query: \"{query}\"")
-        return []
+def _searxng_query(query: str, num_results: int) -> list[dict]:
+    resp = _session.get(
+        f"{SEARXNG_API}/search",
+        params={"q": query, "format": "json", "language": "en"},
+        timeout=5,
+    )
+    resp.raise_for_status()
+    return resp.json().get("results", [])[:num_results]
 
-    # --- Fetch SearXNG results ---
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/91.0.4472.124 Safari/537.36"
+
+def _fetch_page(url: str) -> str | None:
+    """Download a page and return best-effort extracted body text."""
+    try:
+        resp = _session.get(url, timeout=FETCH_TIMEOUT)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        logger.debug("fetch failed for %s: %s", url, e)
+        return None
+
+    ctype = resp.headers.get("content-type", "")
+    if "html" not in ctype and not resp.text.strip().startswith("<"):
+        return None
+
+    if _HAS_TRAFILATURA:
+        return trafilatura.extract(
+            resp.text, include_comments=False, include_tables=False, favor_precision=True
         )
-    }
-    params = {"q": query, "pageno": "1"}
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
+        tag.decompose()
+    return soup.get_text(separator="\n")
+
+
+def _chunk_text(text: str) -> list[str]:
+    """Split page text into paragraph-sized chunks for ranking."""
+    if not text:
+        return []
+
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    chunks, buffer = [], ""
+
+    for para in paragraphs:
+        if len(para) < 40:
+            buffer = f"{buffer} {para}".strip()
+            if len(buffer) >= MIN_CHUNK_CHARS:
+                chunks.append(buffer[:MAX_CHUNK_CHARS])
+                buffer = ""
+            continue
+
+        if buffer:
+            para, buffer = f"{buffer} {para}".strip(), ""
+
+        if len(para) > MAX_CHUNK_CHARS:
+            sentences = re.split(r"(?<=[.!?])\s+", para)
+            cur = ""
+            for sent in sentences:
+                if len(cur) + len(sent) > MAX_CHUNK_CHARS and cur:
+                    chunks.append(cur.strip())
+                    cur = sent
+                else:
+                    cur = f"{cur} {sent}".strip()
+            if cur:
+                chunks.append(cur.strip())
+        else:
+            chunks.append(para)
+
+    if buffer:
+        chunks.append(buffer)
+    return chunks[:MAX_CHUNKS_PER_PAGE]
+
+
+def _rank_bm25(query: str, chunks: list[str]) -> list[float]:
+    bm25 = BM25Okapi([_tokenize(c) for c in chunks])
+    return list(bm25.get_scores(_tokenize(query)))
+
+
+def _rank_overlap(query: str, chunks: list[str]) -> list[float]:
+    """Fallback if rank_bm25 isn't installed: normalized term overlap."""
+    q_set = set(_tokenize(query))
+    scores = []
+    for chunk in chunks:
+        terms = _tokenize(chunk)
+        if not terms:
+            scores.append(0.0)
+            continue
+        overlap = sum(1 for t in terms if t in q_set)
+        score = overlap / (len(terms) ** 0.5)
+        if query.lower() in chunk.lower():
+            score += 2.0
+        scores.append(score)
+    return scores
+
+
+def _rerank(query: str, candidates: list[dict], top_k: int) -> list[dict]:
+    """Cheap second pass over the BM25 shortlist: rewards chunks that cover
+    more distinct query terms, without the cost of an embedding model."""
+    q_terms = set(_tokenize(query))
+
+    def coverage(text: str) -> float:
+        return len(q_terms & set(_tokenize(text))) / max(len(q_terms), 1)
+
+    for c in candidates:
+        c["_final_score"] = c["_score"] * 0.7 + coverage(c["text"]) * 0.3
+    candidates.sort(key=lambda c: c["_final_score"], reverse=True)
+    return candidates[:top_k]
+
+
+def _clean_snippet(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > MAX_CHUNK_CHARS:
+        text = text[:MAX_CHUNK_CHARS].rsplit(" ", 1)[0] + "…"
+    return text
+
+
+def search_searxng(query: str, limit: int = 8) -> list[dict]:
+    """
+    Search via SearXNG, fetch pages concurrently, chunk + rank + re-rank,
+    and return the most relevant text chunks for the LLM.
+    """
+    limit = max(1, min(limit, 10))
+    start = time.time()
 
     try:
-        response = requests.get(SEARXNG_API, params=params, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"Search request failed: {e}")
+        results = _searxng_query(query, RESULTS_TO_FETCH)
+    except requests.RequestException as e:
+        logger.error("SearXNG query failed: %s", e)
+        return []
+    if not results:
         return []
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    url_meta = {r["url"]: r for r in results if r.get("url")}
 
-    # Collect approved URLs + their titles from the SERP
-    candidates = []
-    for result in soup.select(".result")[:limit * 2]:  # over-fetch to account for filtered URLs
-        title_el = result.select_one("h3 a")
-        url_el   = result.select_one("a.url_header") or result.select_one(".result_header a")
-        preview_el = result.select_one(".content")
+    # The slow part is network I/O, so parallelize page fetches.
+    page_texts: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
+        futures = {pool.submit(_fetch_page, url): url for url in url_meta}
+        for future in as_completed(futures, timeout=FETCH_TIMEOUT + 2):
+            url = futures[future]
+            try:
+                text = future.result()
+            except Exception as e:
+                logger.debug("extraction failed for %s: %s", url, e)
+                text = None
+            if text:
+                page_texts[url] = text
 
-        if not (title_el and url_el):
-            continue
-
-        url = url_el.get("href", "").strip()
-        if not url or not check_url(url):
-            continue
-
-        candidates.append({
-            "title":   title_el.get_text(strip=True),
-            "url":     url,
-            "preview": preview_el.get_text(strip=True) if preview_el else "",
-        })
-
-        if len(candidates) >= limit:
-            break
+    candidates: list[dict] = []
+    for url, text in page_texts.items():
+        meta = url_meta[url]
+        for chunk in _chunk_text(text):
+            candidates.append({"url": url, "title": meta.get("title", url), "text": chunk})
 
     if not candidates:
-        print("No approved results returned from SearXNG.")
-        return []
+        # Fall back to SearXNG's own snippets if extraction yielded nothing.
+        return [
+            {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("content", "")}
+            for r in results[:limit]
+        ]
 
-    # --- Fetch each page and extract a useful snippet ---
-    results = []
-    for item in candidates:
-        snippet = _extract_snippet(item["url"], headers, query)
-        results.append({
-            "title":   item["title"],
-            "url":     item["url"],
-            # Fall back to the SERP preview when the page can't be fetched
-            "snippet": snippet or item["preview"],
+    chunk_texts = [c["text"] for c in candidates]
+    scores = _rank_bm25(query, chunk_texts) if _HAS_BM25 else _rank_overlap(query, chunk_texts)
+    for c, s in zip(candidates, scores):
+        c["_score"] = s
+
+    candidates.sort(key=lambda c: c["_score"], reverse=True)
+    shortlist = candidates[:max(limit * 4, 20)]  # re-rank only a small pool
+    top = _rerank(query, shortlist, limit * 2)
+
+    seen_urls, output = set(), []
+    for cand in top:
+        if cand["url"] in seen_urls:
+            continue
+        seen_urls.add(cand["url"])
+        output.append({
+            "title": cand["title"],
+            "url": cand["url"],
+            "snippet": _clean_snippet(cand["text"]),
         })
+        if len(output) >= limit:
+            break
 
-    return results
-
-def check_url(url):
-    return True
-
-
-def _extract_snippet(url: str, headers: dict, query: str, max_chars: int = 1500) -> str:
-    """
-    Fetch a page and return a continuous, context-rich text block 
-    centered around the highest concentration of query keywords.
-    """
-    try:
-        resp = requests.get(url, headers=headers, timeout=8)
-        resp.raise_for_status()
-    except requests.exceptions.RequestException:
-        return ""
-
-    page_soup = BeautifulSoup(resp.text, "html.parser")
-
-    # 1. Clean out the boilerplate noise
-    for tag in page_soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
-        tag.decompose()
-
-    # 2. Extract elements that actually hold textual body content
-    # This expands on just <p> tags to grab lists and headings
-    content_tags = page_soup.find_all(["p", "li", "h1", "h2", "h3", "h4", "td"])
-    
-    # Process text chunks in chronological order (maintaining document flow)
-    chunks = []
-    for tag in content_tags:
-        text = tag.get_text(separator=" ", strip=True)
-        # Filter out obvious micro-text noise like "Share", "Tweet", or single words
-        if text and len(text.split()) > 3:
-            chunks.append(text)
-
-    if not chunks:
-        return ""
-
-    # Clean query words to look for matches
-    query_words = [re.sub(r'[^\w\s]', '', w.lower()) for w in query.lower().split()]
-    query_words = [w for w in query_words if len(w) > 2]  # ignore tiny words like 'in', 'of', '20'
-
-    # 3. Find the best continuous text block (Sliding Window approach)
-    best_window = []
-    max_matches = -1
-
-    # Look at windows of sequential paragraphs to maintain context
-    for i in range(len(chunks)):
-        current_window = []
-        current_len = 0
-        match_count = 0
-        
-        # Expand window until we hit the char limit
-        for j in range(i, len(chunks)):
-            chunk = chunks[j]
-            if current_len + len(chunk) > max_chars:
-                break
-            
-            current_window.append(chunk)
-            current_len += len(chunk) + 1 # +1 for the joining space
-            
-            # Count keyword occurrences in this chunk
-            chunk_lower = chunk.lower()
-            match_count += sum(1 for w in query_words if w in chunk_lower)
-
-        # We want the window that has the most keyword density/matches
-        if match_count > max_matches:
-            max_matches = match_count
-            best_window = current_window
-
-    # Return the unified block of text, keeping sentences in their proper order
-    return " ".join(best_window)
+    logger.debug(
+        "search_searxng('%s'): %.2fs, %d candidates, %d results",
+        query, time.time() - start, len(candidates), len(output),
+    )
+    return output
