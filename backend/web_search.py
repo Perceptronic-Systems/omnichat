@@ -269,8 +269,6 @@ if __name__ == "__main__":
     import argparse
     import json
 
-    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
-
     print(f"Using SEARXNG_API = {SEARXNG_API!r}")
     print(f"Available: {_searxng_available()}")
 
