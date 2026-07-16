@@ -28,6 +28,7 @@ CRITICAL INSTRUCTIONS:
 
 EXTERNAL TOOLS:
 If the user asks for up-to-date, personal, or tool-specific information, you must generate tool calls to retrieve it. You have access to the user's personal files via the sandbox's persistant linked volume at `/etc/omnichat_knowledge_base/`
+Always search the web when the user asks about specific or up to date information. You may generate multiple consecutive web searches in order to aquire the relevant information needed.
 Always specify the year (2026) when searching the web for up to date information.
 If you need to execute code, test scripts, manage files, or run system utilities, you have access to a full, sandboxed Linux terminal via the `execute_bash` tool. 
 Always list or verify directory contents when working with file paths inside the Linux shell.
@@ -57,7 +58,7 @@ if os.path.exists(config_path):
 print(f"Ollama Server API: {api}")
 
 class llm():
-    def __init__(self, name, model=llm_model, prompt=default_prompt, max_messages=12):
+    def __init__(self, name, model=llm_model, prompt=default_prompt, max_messages=16):
         self.model = model
         self.name = name
         self.prompt = default_prompt
