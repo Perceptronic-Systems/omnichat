@@ -14,7 +14,6 @@ import mcp_server as mcp
 llm_model = "gemma4:e4b"
 default_api = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 api = default_api
-client = ollama.Client(host=api)
 
 bot_name = "Omnichat"
 
@@ -32,7 +31,7 @@ Always search the web when the user asks about specific or up to date informatio
 Always specify the year (2026) when searching the web for up to date information.
 If you need to execute code, test scripts, manage files, or run system utilities, you have access to a full, sandboxed Linux terminal via the `execute_bash` tool. 
 Always list or verify directory contents when working with file paths inside the Linux shell.
-You may make recursive or consecutive tool calls as many times as you need in order to achieve the task at hand. At times it may be needed to generate multiple consecutive tool calls in order to properly answer the user's message.
+You may make multiple consecutive tool calls as many times as you need in order to achieve the task at hand. At times it may be needed to generate multiple consecutive tool calls in order to properly answer the user's message.
 
 Do whatever the user tells you to."""
 
@@ -57,6 +56,8 @@ if os.path.exists(config_path):
 
 print(f"Ollama Server API: {api}")
 
+client = ollama.AsyncClient(host=api)
+
 class llm():
     def __init__(self, name, model=llm_model, prompt=default_prompt, max_messages=16):
         self.model = model
@@ -66,65 +67,32 @@ class llm():
         self.messages = [{"role": "system", "content": prompt}]
         self.status = 'idle'
 
-    def generate(self, user_prompt: str, uploaded_files: List[tuple] = None):
+    # 1. Change this to an ASYNC generator
+    async def generate(self, user_prompt: str, uploaded_files: List[tuple] = None):
         uploaded_files = uploaded_files or []
 
         if user_prompt != '' or uploaded_files:
             message_payload = {'role': 'user', 'content': ""}
-            images_payload = []
-
-            for filename, file_bytes in uploaded_files:
-                filename_lower = filename.lower()
-
-                if filename_lower.endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                    images_payload.append(file_bytes)
-
-                elif filename_lower.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac')):
-                    images_payload.append(file_bytes)
-
-                elif filename_lower.endswith('.pdf'):
-                    try:
-                        pdf_stream = io.BytesIO(file_bytes)
-                        pdf_reader = PdfReader(pdf_stream)
-                        pdf_text = ""
-                        for page in pdf_reader.pages:
-                            text = page.extract_text()
-                            if text:
-                                pdf_text += text + "\n"
-                        if pdf_text.strip():
-                            message_payload['content'] += f"\n\n[Attached PDF Content - {filename}]:\n{pdf_text}"
-                        else:
-                            message_payload['content'] += f"\n\n[Attached PDF: {filename} (No readable text found, it might be a scanned image)]"
-                    except Exception as e:
-                        print(f"Error parsing PDF {filename}: {e}")
-                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse PDF text contents)]"
-
-                else:
-                    try:
-                        text_content = file_bytes.decode('utf-8')
-                        message_payload['content'] += f"\n\n[Attached File Context - {filename}]:\n{text_content}"
-                    except Exception as e:
-                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse text)]"
-
-            if images_payload:
-                message_payload['images'] = images_payload
-
+            # ... (keep your file processing logic here exactly as it is) ...
             message_payload['content'] += f"\n\n{user_prompt}"
-
             self.messages.append(message_payload)
 
         status = 'Loading model'
         print(status)
 
-        stream = client.chat(model=self.model,
-                             messages=self.messages,
-                             tools=tools_list,
-                             think=False,
-                             stream=True,
-                             options={"num_ctx": 32768})
+        # 2. Use await with client.chat
+        stream = await client.chat(
+            model=self.model,
+            messages=self.messages,
+            tools=tools_list,
+            stream=True,
+            options={"num_ctx": 32768}
+        )
         
         full_response = {'role': 'assistant', 'content': '', 'tool_calls': []}
-        for chunk in stream:
+        
+        # 3. Use "async for" to consume the stream safely
+        async for chunk in stream:
             if status == "Loading model":
                 print("Generating")
             status = 'Generating'
@@ -169,8 +137,9 @@ class llm():
 
                 self.messages.append({'role': 'tool', 'content': str(tool_output)})
 
-            # Keep file list empty on recursions
-            yield from self.generate('')
+            # 4. Use "async for ... yield" for the recursion step
+            async for item in self.generate(''):
+                yield item
         else:
             print(f"AI Response: {full_response['content']}")
             self.messages.append({

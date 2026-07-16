@@ -100,10 +100,8 @@ def make_container_directory(path: str = Form(...)):
         return JSONResponse(status_code=400, content=result)
     return result
 
-def generator_wrapper(model, prompt: str, files: List[UploadFile]):
-    # We pass raw fields downwards to the model wrapper
-    stream = model.generate(prompt, files)
-    for chunk in stream:
+async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
+    async for chunk in model.generate(prompt, files):
         yield 'data: ' + json.dumps(chunk) + ' \n\n'
 
 @app.post("/generate")
@@ -118,7 +116,6 @@ async def generate(
     if files:
         for file in files:
             if file.filename != '':
-                # Read the bytes NOW, while the request/UploadFile is still alive
                 content = await file.read()
                 valid_files.append((file.filename, content))
 
