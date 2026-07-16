@@ -56,7 +56,6 @@ if os.path.exists(config_path):
 
 print(f"Ollama Server API: {api}")
 
-client = ollama.AsyncClient(host=api)
 
 class llm():
     def __init__(self, name, model=llm_model, prompt=default_prompt, max_messages=16):
@@ -66,22 +65,61 @@ class llm():
         self.max_messages = max_messages
         self.messages = [{"role": "system", "content": prompt}]
         self.status = 'idle'
+        # Crucial fix: Initialize the AsyncClient scoped inside the instance/event loop
+        self.client = ollama.AsyncClient(host=api)
 
-    # 1. Change this to an ASYNC generator
     async def generate(self, user_prompt: str, uploaded_files: List[tuple] = None):
         uploaded_files = uploaded_files or []
 
         if user_prompt != '' or uploaded_files:
             message_payload = {'role': 'user', 'content': ""}
-            # ... (keep your file processing logic here exactly as it is) ...
+            images_payload = []
+
+            for filename, file_bytes in uploaded_files:
+                filename_lower = filename.lower()
+
+                if filename_lower.endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                    images_payload.append(file_bytes)
+
+                elif filename_lower.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac')):
+                    images_payload.append(file_bytes)
+
+                elif filename_lower.endswith('.pdf'):
+                    try:
+                        pdf_stream = io.BytesIO(file_bytes)
+                        pdf_reader = PdfReader(pdf_stream)
+                        pdf_text = ""
+                        for page in pdf_reader.pages:
+                            text = page.extract_text()
+                            if text:
+                                pdf_text += text + "\n"
+                        if pdf_text.strip():
+                            message_payload['content'] += f"\n\n[Attached PDF Content - {filename}]:\n{pdf_text}"
+                        else:
+                            message_payload['content'] += f"\n\n[Attached PDF: {filename} (No readable text found, it might be a scanned image)]"
+                    except Exception as e:
+                        print(f"Error parsing PDF {filename}: {e}")
+                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse PDF text contents)]"
+
+                else:
+                    try:
+                        text_content = file_bytes.decode('utf-8')
+                        message_payload['content'] += f"\n\n[Attached File Context - {filename}]:\n{text_content}"
+                    except Exception as e:
+                        message_payload['content'] += f"\n\n[Attached File: {filename} (Could not parse text)]"
+
+            if images_payload:
+                message_payload['images'] = images_payload
+
             message_payload['content'] += f"\n\n{user_prompt}"
+
             self.messages.append(message_payload)
 
         status = 'Loading model'
         print(status)
 
-        # 2. Use await with client.chat
-        stream = await client.chat(
+        # Correct async call on instance client
+        stream = await self.client.chat(
             model=self.model,
             messages=self.messages,
             tools=tools_list,
@@ -91,7 +129,7 @@ class llm():
         
         full_response = {'role': 'assistant', 'content': '', 'tool_calls': []}
         
-        # 3. Use "async for" to consume the stream safely
+        # Async stream loop processing
         async for chunk in stream:
             if status == "Loading model":
                 print("Generating")
@@ -137,7 +175,7 @@ class llm():
 
                 self.messages.append({'role': 'tool', 'content': str(tool_output)})
 
-            # 4. Use "async for ... yield" for the recursion step
+            # Yield from recursive step cleanly for async generators
             async for item in self.generate(''):
                 yield item
         else:
