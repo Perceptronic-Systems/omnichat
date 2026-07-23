@@ -439,7 +439,7 @@ blockquote { border-left: 4px solid #ccc;
     background-color: transparent;
 }
 
-@media (max-width: 512px) {
+@media (max-width: 768px) {
     body {
         /* Switch from explicit sizing to a flexible, single-column grid stack */
         grid-template-columns: 1fr;
@@ -473,6 +473,7 @@ blockquote { border-left: 4px solid #ccc;
         opacity: 0;
         visibility: hidden;
         width: 0px;
+        height: 0px;
         margin: 0px;
         padding: 0px;
     }
