@@ -396,7 +396,7 @@ td button {
     }
 }
 
-@media (max-width: 512px) {
+@media (max-width: 768px) {
     body {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto 1fr auto; 
@@ -428,6 +428,7 @@ td button {
         visibility: hidden;
         height: 0;
         width: 0px;
+        height: 0px;
         margin: 0px;
         padding: 0px;
     }
@@ -461,4 +462,196 @@ td button {
     .bot {
         max-width: 95%;
     }
+}
+
+/* ==========================================================================
+   File Manager Page Styles (Scoped to prevent chat leakage)
+   ========================================================================== */
+
+/* Breadcrumbs & Navigation Toolbar */
+.section span[style*="cursor: pointer"] {
+    color: #619696;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.section span[style*="cursor: pointer"]:hover {
+    color: rgb(45, 228, 228);
+    text-decoration: underline;
+}
+
+/* File Manager Controls/Buttons - Specific to file actions table/toolbars */
+.file-manager-toolbar button,
+table button {
+    background-color: rgb(24, 28, 33);
+    border: 1px solid rgb(45, 50, 55);
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.file-manager-toolbar button:hover:not(:disabled),
+table button:hover:not(:disabled) {
+    background-color: rgba(97, 150, 150, 0.15);
+    border-color: #619696;
+    color: white;
+}
+
+.file-manager-toolbar button:disabled,
+table button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Upload Label Styling */
+.section label[title="Upload files"] {
+    background-color: rgb(45, 82, 124);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    border: 1px solid transparent;
+    transition: background-color 0.2s;
+}
+
+.section label[title="Upload files"]:hover {
+    background-color: rgb(60, 108, 170);
+}
+
+/* File List Table */
+table {
+    margin-top: 0.5rem;
+}
+
+th {
+    color: rgb(182, 182, 182);
+    font-weight: bold;
+    border-bottom: 2px solid rgb(35, 40, 45);
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+td {
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+}
+
+tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+td[style*="cursor: pointer"] {
+    color: rgb(210, 210, 210);
+}
+
+tbody tr:hover td[style*="cursor: pointer"] {
+    color: rgb(45, 228, 228);
+}
+
+td button {
+    margin-left: 0.25rem;
+    padding: 0.2rem 0.4rem !important;
+    font-size: 0.85rem;
+}
+
+td button[title="Delete"]:hover {
+    background-color: rgba(224, 85, 85, 0.15) !important;
+    border-color: #e05555 !important;
+}
+
+/* Preview Panel */
+.column[style*="width: 40%"] {
+    background-color: rgb(16, 20, 24);
+}
+
+.column[style*="width: 40%"] .section:first-child {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 0;
+}
+
+.column[style*="width: 40%"] pre {
+    border: none;
+    background-color: rgb(12, 15, 18);
+    font-family: 'HackNerdFontMono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    padding: 1rem;
+    border-radius: 0;
+}
+
+/* Only italicize the file preview empty/error text, NOT chat history */
+.column[style*="width: 40%"] p, 
+.file-manager-empty-state {
+    font-style: italic;
+    color: rgba(154, 162, 163, 0.7);
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column !important;
+    }
+    .column[style*="width: 40%"] {
+        width: 100% !important;
+        border-left: none !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        height: 40vh;
+    }
+}
+
+/* ==========================================================================
+   Nerd Font Glyphs Layout Adjustments
+   ========================================================================== */
+
+td[style*="cursor: pointer"] {
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.file-preview-icon {
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+/* Target file manager specific action elements, avoiding global chat sections */
+.file-manager-toolbar button {
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2rem;
+    height: 2.2rem;
+    padding-left: 0.5rem;
+    padding-right: 0.8rem;
+}
+
+.download-file, .delete-file {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0 0.3rem 0 0!important;
+    margin-left: 0.25rem;
+}
+
+.section label[title="Upload files"] {
+    font-family: 'AdwaitaMonoNerdFont', 'HackNerdFontMono', monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.2rem;
+    box-sizing: border-box;
 }

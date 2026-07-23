@@ -170,6 +170,7 @@ def execute_bash(command: str, timeout: int = 30) -> str:
         return f"[Command timed out after {timeout}s]\n{output}"
     return output if output.strip() else "Command executed with no output."
 
+
 @mcp.tool()
 def search_web(query: str, limit: int = 8) -> list[dict]:
     """

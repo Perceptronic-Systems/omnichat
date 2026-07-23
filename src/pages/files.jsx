@@ -219,7 +219,11 @@ export default function Files({ apiBase }) {
         <div className="column" style={{ width: "40%", minWidth: "280px", borderLeft: "1px solid rgba(255,255,255,0.1)", overflow: "auto" }}>
           <div className="section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong>{preview.name}</strong>
+<<<<<<< HEAD
             <button className='hide-file-preview' onClick={() => setPreview(null)}> </button>
+=======
+            <button onClick={() => setPreview(null)}> </button>
+>>>>>>> origin/main
           </div>
           <div className="section" style={{ flex: 1, overflow: "auto" }}>
             {previewLoading && <p>Loading preview…</p>}
