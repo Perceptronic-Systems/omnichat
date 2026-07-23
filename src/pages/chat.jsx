@@ -192,11 +192,7 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
       }
     };
 
-<<<<<<< HEAD
   return <div className="column" style={{ flex: 1, minHeight:0, overflow:"hidden" }}>
-=======
-  return <div className="column" style={{ flex:1, minHeight:0, overflow:"hidden" }}>
->>>>>>> origin/main
     
               {/* Chat history */}
               <div id="chat-history" className="section">
