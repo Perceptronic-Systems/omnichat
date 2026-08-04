@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_KEEP_ALIVE=-1
     volumes:
       - ollama_data:/root/.ollama
     deploy:
