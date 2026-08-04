@@ -35,27 +35,40 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
     formData.append("files", new Blob([]), "");
   }
 
-  const response = await fetch(`${apiBase}generate`, { method: "POST", body: formData });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 min hard cap
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-  let buf = "";
+  try {
+    const response = await fetch(`${apiBase}generate`, { method: "POST", body: formData, signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop();
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line || !line.startsWith("data:")) continue;
-      try {
-        const json = JSON.parse(line.replace(/^data:\s*/, ""));
-        if (json.is_done || json.status === "idle") return;
-        yield { token: json.token || "", status: json.status || "Retrieving Data", tool_calls: json.tool_calls || null  };
-      } catch { /* malformed chunk */ }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buf = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop();
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line || !line.startsWith("data:")) continue;
+        try {
+          const json = JSON.parse(line.replace(/^data:\s*/, ""));
+          if (json.is_done || json.status === "idle") return;
+          yield { token: json.token || "", status: json.status || "Retrieving Data", tool_calls: json.tool_calls || null };
+        } catch { /* malformed chunk */ }
+      }
     }
+  } catch (err) {
+    yield {
+      token: `\n\n*⚠️ Connection error: ${err.name === "AbortError" ? "request timed out" : err.message}*`,
+      status: "error",
+      tool_calls: null,
+    };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
