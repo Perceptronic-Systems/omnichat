@@ -100,9 +100,62 @@ def make_container_directory(path: str = Form(...)):
         return JSONResponse(status_code=400, content=result)
     return result
 
+# How often to send an SSE keep-alive comment while we're waiting for the
+# next real chunk from the model. This matters most on the *first* message
+# to a given model, when Ollama has to load it into memory before emitting
+# any tokens at all -- that can easily take longer than a typical reverse
+# proxy's idle/read timeout (nginx defaults to 60s). Without a heartbeat,
+# a proxy sitting in front of this server will silently end the connection
+# while nothing has been sent yet, and the client sees a blank response
+# with no error, even though FastAPI itself never crashed or timed out.
+HEARTBEAT_INTERVAL_SECONDS = 15
+
+_SENTINEL = object()
+
+
 async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
-    async for chunk in model.generate(prompt, files):
-        yield 'data: ' + json.dumps(chunk) + ' \n\n'
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def producer():
+        try:
+            async for chunk in model.generate(prompt, files):
+                await queue.put(chunk)
+        except Exception as e:
+            # Belt-and-suspenders: model_gateway already catches its own
+            # errors and yields a terminal chunk, but if something upstream
+            # of that still raises, make sure the client still gets a
+            # visible message instead of a silently closed connection.
+            print(f"[GENERATE ERROR] {e}")
+            await queue.put({
+                'status': 'error',
+                'token': f"\n\n*Internal error: {e}*",
+                'tool_calls': [],
+                'is_done': True,
+            })
+        finally:
+            await queue.put(_SENTINEL)
+
+    task = asyncio.create_task(producer())
+
+    try:
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_INTERVAL_SECONDS)
+            except asyncio.TimeoutError:
+                # SSE comment line: valid per the SSE spec, ignored by any
+                # spec-compliant parser, and already skipped by our own
+                # frontend parser (it only looks at lines starting with
+                # "data:"). Its only job is to put bytes on the wire so
+                # nothing in between times out the connection as idle.
+                yield ': heartbeat\n\n'
+                continue
+
+            if item is _SENTINEL:
+                break
+            yield 'data: ' + json.dumps(item) + ' \n\n'
+    finally:
+        if not task.done():
+            task.cancel()
 
 @app.post("/generate")
 async def generate(
