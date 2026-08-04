@@ -114,6 +114,7 @@ class llm():
             self.ollama_messages.append(message_payload)
 
         status = 'Loading model'
+        yield {'status': status, 'token': '', 'tool_calls': [], 'is_done': False}
         full_response = {'role': 'assistant', 'content': '', 'tool_calls': []}
 
         try:
@@ -122,7 +123,8 @@ class llm():
                 messages=self.ollama_messages,
                 tools=tools_list,
                 stream=True,
-                options={"num_ctx": 32768}
+                options={"num_ctx": 32768},
+                keep_alive=-1
             )
 
             async for chunk in stream:
