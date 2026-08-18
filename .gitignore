@@ -2,3 +2,6 @@ backend/__pycache__/*
 backend/venv/*
 chroma_langchain_db/*
 knowledge_base/*
+models/
+__pycache__/
+.venv/
