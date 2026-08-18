@@ -299,9 +299,12 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
                   </button>
                   <button id="send-button" onClick={sendMessage}>Send</button>
                 </div>
-                {voiceError && (
+
+                {(isRecording || voiceState === 'transcribing' || voiceError) && (
                   <div id="voice-status-row">
-                    <span className="voice-error">{voiceError}</span>
+                    {voiceError
+                      ? <span className="voice-error">{voiceError}</span>
+                      : <span className="voice-partial">{(isRecording ? "Listening…" : "Transcribing…")}</span>}
                   </div>
                 )}
               </div>

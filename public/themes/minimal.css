@@ -103,3 +103,39 @@ th {
 }
 td { border-bottom: 1px solid var(--border-color); }
 tbody tr:hover { background-color: var(--bg-elevated); }
+
+:root {
+    /* Define your theme-specific filter here */
+    --mic-filter: none;
+}
+
+#mic-button {
+    background-color: transparent;
+    border-radius: 0px;
+    margin-left: 1rem;
+    border: none;
+}
+
+#mic-button img {
+    background-color: transparent;
+    /* Use the variable and just adjust opacity */
+    filter: var(--mic-filter) opacity(0.7);
+}
+
+#mic-button:hover img {
+    filter: var(--mic-filter) opacity(0.8);
+}
+
+#mic-button:active img {
+    filter: var(--mic-filter) opacity(1);
+}
+
+#voice-status-row {
+    position: absolute;
+    bottom: 100%;
+    right: 0%;
+}
+
+.recording {
+    background: radial-gradient(circle, rgba(106, 213, 255, 0.5) 0%, transparent 75%);
+}
