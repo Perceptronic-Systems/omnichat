@@ -25,11 +25,11 @@ def load_model():
     if _model is not None:
         return _model
     if not os.path.isdir(VOSK_MODEL_PATH):
-        print(f"[VOSK] Model directory not found at {VOSK_MODEL_PATH} -- voice input will be unavailable.")
+        print(f"[VOSK] Model directory not found at {VOSK_MODEL_PATH} -- voice input will be unavailable.", flush=True)
         return None
-    print(f"[VOSK] Loading model from {VOSK_MODEL_PATH}...")
+    print(f"[VOSK] Loading model from {VOSK_MODEL_PATH}...", flush=True)
     _model = vosk.Model(VOSK_MODEL_PATH)
-    print("[VOSK] Model loaded.")
+    print("[VOSK] Model loaded.", flush=True)
     return _model
 
 

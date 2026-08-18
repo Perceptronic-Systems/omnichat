@@ -30,7 +30,12 @@ async def lifespan(app: FastAPI):
     try:
         speech_to_text.load_model()
     except Exception as e:
-        print(f"[VOSK] Failed to load model, voice input will be unavailable: {e}")
+        # Voice input is a nice-to-have on top of an otherwise working app --
+        # a bad/missing/corrupt Vosk model directory should never take down
+        # text chat with it. speech_to_text.is_ready() will correctly report
+        # False and /ws/transcribe will tell connecting clients voice isn't
+        # available, instead of the whole process crash-looping.
+        print(f"[VOSK] Failed to load model, voice input will be unavailable: {e}", flush=True)
     yield
     
 app = FastAPI(lifespan=lifespan)
@@ -47,6 +52,11 @@ app.add_middleware(
 @app.get("/status")
 def get_status():
     return "Running"
+
+
+@app.get("/voice/status")
+def get_voice_status():
+    return {"ready": speech_to_text.is_ready()}
 
 @app.get("/files/list")
 def list_container_files(path: str = "/"):
