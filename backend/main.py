@@ -27,7 +27,10 @@ atexit.register(cleanup_container)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await initialize_tools()
-    speech_to_text.load_model()
+    try:
+        speech_to_text.load_model()
+    except Exception as e:
+        print(f"[VOSK] Failed to load model, voice input will be unavailable: {e}")
     yield
     
 app = FastAPI(lifespan=lifespan)
