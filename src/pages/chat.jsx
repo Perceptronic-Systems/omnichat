@@ -1,6 +1,7 @@
 import { parseMarkdown } from "../markdown.jsx";
 import { UserMessage, BotMessage } from "../messages.jsx";
 import { generateResponse } from "../api.jsx";
+import { useVoiceInput } from "../voice.jsx";
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── File helpers ─────────────────────────────────────────────────────────────
@@ -117,14 +118,15 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
       setMessages(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
     }, []);
   
-    const sendMessage = useCallback(async () => {
-      if (!input.trim() && files.length === 0) return;
-  
-      const userText  = input;
-      const userFiles = [...files];
-      setInput("");
-      setFiles([]);
-  
+    // Core send logic, parameterized on explicit text/files rather than
+    // reading from `input`/`files` state directly. This lets callers (the
+    // Send button, or the voice-transcript callback below) pass a value
+    // straight through without racing a setInput() that hasn't committed
+    // yet -- setState is asynchronous, so setInput(text); sendMessage()
+    // would otherwise send whatever `input` was *before* this update.
+    const sendMessageWithText = useCallback(async (userText, userFiles) => {
+      if (!userText.trim() && userFiles.length === 0) return;
+
       addMessage("user", parseMarkdown(userText));
       if (userFiles.length > 0) {
         const fileListHtml = userFiles
@@ -132,9 +134,9 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
           .join("");
         addMessage("user", `<p><em>Attached ${userFiles.length} file(s):</em></p><ul class="attached-file-list">${fileListHtml}</ul>`);
       }
-  
+
       const botId = addMessage("bot", "", { status: "Connecting", streaming: true });
-  
+
       try {
         let generated = "";
         for await (const { token, status, tool_calls } of generateResponse(userText, SESSION_ID, userFiles, apiBase)) {
@@ -148,9 +150,33 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
       } catch (err) {
         updateMessage(botId, { html: `<p style="color:#e05555">Error: ${err.message}</p>`, streaming: false });
       }
-    }, [input, files, apiBase, addMessage, updateMessage]);
-  
+    }, [apiBase, addMessage, updateMessage, setToolCalls]);
+
+    const sendMessage = useCallback(() => {
+      const userText  = input;
+      const userFiles = [...files];
+      setInput("");
+      setFiles([]);
+      sendMessageWithText(userText, userFiles);
+    }, [input, files, sendMessageWithText]);
+
     const handleKeyDown    = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+
+    // ─── Voice input ──────────────────────────────────────────────────────────
+    const handleFinalTranscript = useCallback((text) => {
+      sendMessageWithText(text, []);
+    }, [sendMessageWithText]);
+
+    const { voiceState, partialText, error: voiceError, startRecording, stopRecording }
+      = useVoiceInput({ apiBase, onFinalTranscript: handleFinalTranscript });
+
+    const isRecording = voiceState === 'recording';
+    const micDisabled = apiBase === 'browser' || voiceState === 'requesting-permission' || voiceState === 'transcribing';
+
+    const handleMicClick = () => {
+      if (voiceState === 'recording') stopRecording();
+      else if (voiceState === 'idle' || voiceState === 'error') startRecording();
+    };
 
     const handleFileChange = (e) => {
       const picked = Array.from(e.target.files); 
@@ -250,8 +276,30 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
                   />
+                  <button
+                    id="mic-button"
+                    className={isRecording ? "recording" : ""}
+                    disabled={micDisabled}
+                    onClick={handleMicClick}
+                    title={
+                      apiBase === 'browser' ? "Voice input requires a server connection"
+                      : voiceState === 'requesting-permission' ? "Requesting microphone access..."
+                      : voiceState === 'transcribing' ? "Finishing transcription..."
+                      : isRecording ? "Stop recording"
+                      : "Start voice input"
+                    }
+                  >
+                    <img src='icons/mic.svg' width='30' height='30'></img>
+                  </button>
                   <button id="send-button" onClick={sendMessage}>Send</button>
                 </div>
+                {(isRecording || voiceState === 'transcribing' || voiceError) && (
+                  <div id="voice-status-row">
+                    {voiceError
+                      ? <span className="voice-error">{voiceError}</span>
+                      : <span className="voice-partial">{partialText || (isRecording ? "Listening…" : "Transcribing…")}</span>}
+                  </div>
+                )}
               </div>
     
             </div>

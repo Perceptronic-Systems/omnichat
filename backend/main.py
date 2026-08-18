@@ -2,7 +2,7 @@
 
 from model_gateway import llm, initialize_tools
 import fastapi
-from fastapi import Response, FastAPI, Form, UploadFile, File
+from fastapi import Response, FastAPI, Form, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -20,12 +20,14 @@ from mcp_server import (
     fm_delete_path,
     fm_make_directory,
 )
+import speech_to_text
 
 atexit.register(cleanup_container)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await initialize_tools()
+    speech_to_text.load_model()
     yield
     
 app = FastAPI(lifespan=lifespan)
@@ -100,6 +102,58 @@ def make_container_directory(path: str = Form(...)):
         return JSONResponse(status_code=400, content=result)
     return result
 
+
+@app.websocket("/ws/transcribe")
+async def websocket_transcribe(websocket: WebSocket):
+    await websocket.accept()
+
+    if not speech_to_text.is_ready():
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "message": "Speech-to-text model is not loaded on the server."
+        }))
+        await websocket.close()
+        return
+
+    session = speech_to_text.TranscriptionSession()
+
+    try:
+        while True:
+            message = await websocket.receive()
+
+            if message["type"] == "websocket.disconnect":
+                break
+
+            audio_bytes = message.get("bytes")
+            if audio_bytes is not None:
+                result = session.accept_audio(audio_bytes)
+                await websocket.send_text(json.dumps(result))
+                continue
+
+            text_frame = message.get("text")
+            if text_frame is not None:
+                try:
+                    control = json.loads(text_frame)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if control.get("type") == "stop":
+                    result = session.finalize()
+                    await websocket.send_text(json.dumps(result))
+                    break
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"[TRANSCRIBE ERROR] {e}")
+        try:
+            await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+        except Exception:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
 # How often to send an SSE keep-alive comment while we're waiting for the
 # next real chunk from the model. This matters most on the *first* message
 # to a given model, when Ollama has to load it into memory before emitting
@@ -137,21 +191,29 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
 
     task = asyncio.create_task(producer())
 
+    waited_seconds = 0
     try:
         while True:
             try:
                 item = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_INTERVAL_SECONDS)
             except asyncio.TimeoutError:
-                # SSE comment line: valid per the SSE spec, ignored by any
-                # spec-compliant parser, and already skipped by our own
-                # frontend parser (it only looks at lines starting with
-                # "data:"). Its only job is to put bytes on the wire so
-                # nothing in between times out the connection as idle.
-                yield ': heartbeat\n\n'
+                # Send a real status update, not just a bare SSE comment.
+                # This does double duty: it puts bytes on the wire so no
+                # proxy/load balancer treats the connection as idle, AND it
+                # updates the visible status text so the UI doesn't sit on
+                # "Connecting" the entire time a model is loading. The first
+                # request to a given model can take a while if Ollama has
+                # to load (or pull) it before it can emit any tokens.
+                waited_seconds += HEARTBEAT_INTERVAL_SECONDS
+                status_msg = 'Loading model' if waited_seconds < 60 else 'Still loading model (this can take a while on first use)'
+                yield 'data: ' + json.dumps({
+                    'status': status_msg, 'token': '', 'tool_calls': [], 'is_done': False
+                }) + ' \n\n'
                 continue
 
             if item is _SENTINEL:
                 break
+            waited_seconds = 0
             yield 'data: ' + json.dumps(item) + ' \n\n'
     finally:
         if not task.done():
