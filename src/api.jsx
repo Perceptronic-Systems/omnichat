@@ -21,7 +21,7 @@ export function initApi() {
 
 export function clearStoredApi() { localStorage.removeItem("omnichat_api_url"); }
 
-export async function* generateResponse(prompt, id, files = [], apiBase, history = [], onModelProgress) {
+export async function* generateResponse(prompt, id, files = [], apiBase, history = [], onModelProgress, tts = false) {
   if (apiBase === "browser") {
     yield* generateResponseWebLLM(prompt, history, onModelProgress);
     return;
@@ -29,6 +29,7 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
   const formData = new FormData();
   formData.append("id", id);
   formData.append("prompt", prompt || "");
+  formData.append("tts", tts ? "true" : "false");
   if (files.length > 0) {
     files.forEach(f => formData.append("files", f));
   } else {
@@ -58,7 +59,15 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
         try {
           const json = JSON.parse(line.replace(/^data:\s*/, ""));
           if (json.is_done || json.status === "idle") return;
-          yield { token: json.token || "", status: json.status || "Retrieving Data", tool_calls: json.tool_calls || null };
+          // audio: base64-encoded WAV for one sentence, present only when
+          // tts=true was requested and that chunk carries synthesized
+          // speech rather than a text token. null on every other chunk.
+          yield {
+            token: json.token || "",
+            status: json.status || "Retrieving Data",
+            tool_calls: json.tool_calls || null,
+            audio: json.audio || null,
+          };
         } catch { /* malformed chunk */ }
       }
     }
@@ -67,6 +76,7 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
       token: `\n\n*⚠️ Connection error: ${err.name === "AbortError" ? "request timed out" : err.message}*`,
       status: "error",
       tool_calls: null,
+      audio: null,
     };
   } finally {
     clearTimeout(timeoutId);

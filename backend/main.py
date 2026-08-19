@@ -21,6 +21,7 @@ from mcp_server import (
     fm_make_directory,
 )
 import speech_to_text
+import text_to_speech
 
 atexit.register(cleanup_container)
 
@@ -36,6 +37,12 @@ async def lifespan(app: FastAPI):
         # False and /ws/transcribe will tell connecting clients voice isn't
         # available, instead of the whole process crash-looping.
         print(f"[VOSK] Failed to load model, voice input will be unavailable: {e}", flush=True)
+    try:
+        text_to_speech.load_model()
+    except Exception as e:
+        # Same reasoning as above: TTS is additive, never load-bearing for
+        # basic text chat.
+        print(f"[KOKORO] Failed to load model, TTS will be unavailable: {e}", flush=True)
     yield
     
 app = FastAPI(lifespan=lifespan)
@@ -56,7 +63,10 @@ def get_status():
 
 @app.get("/voice/status")
 def get_voice_status():
-    return {"ready": speech_to_text.is_ready()}
+    return {
+        "stt_ready": speech_to_text.is_ready(),
+        "tts_ready": text_to_speech.is_ready(),
+    }
 
 @app.get("/files/list")
 def list_container_files(path: str = "/"):
@@ -180,13 +190,53 @@ HEARTBEAT_INTERVAL_SECONDS = 15
 _SENTINEL = object()
 
 
-async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
+async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_audio: bool = False):
     queue: asyncio.Queue = asyncio.Queue()
 
     async def producer():
+        accumulator = None
+        tts_queue = None
+        tts_worker_task = None
+
         try:
+            if want_audio and text_to_speech.is_ready():
+                accumulator = text_to_speech.SentenceAccumulator()
+                tts_queue = asyncio.Queue()
+
+                async def tts_worker():
+                    # Strictly one sentence at a time, in submission order.
+                    # This is what guarantees correct playback ordering --
+                    # synthesis for sentence N still overlaps with the LLM
+                    # generating sentence N+1's tokens (this worker and the
+                    # text loop below run as separate concurrent tasks), but
+                    # within the worker itself nothing runs out of order.
+                    while True:
+                        sentence = await tts_queue.get()
+                        if sentence is None:
+                            break
+                        try:
+                            audio_b64 = await text_to_speech.synthesize(sentence)
+                            if audio_b64:
+                                await queue.put({
+                                    'status': 'Generating', 'token': '', 'tool_calls': [],
+                                    'is_done': False, 'audio': audio_b64,
+                                })
+                        except Exception as e:
+                            print(f"[TTS ERROR] {e}")
+
+                tts_worker_task = asyncio.create_task(tts_worker())
+
             async for chunk in model.generate(prompt, files):
                 await queue.put(chunk)
+                if accumulator is not None and chunk.get('token'):
+                    for sentence in accumulator.feed(chunk['token']):
+                        await tts_queue.put(sentence)
+
+            if accumulator is not None:
+                tail = accumulator.flush()
+                if tail:
+                    await tts_queue.put(tail)
+
         except Exception as e:
             # Belt-and-suspenders: model_gateway already catches its own
             # errors and yields a terminal chunk, but if something upstream
@@ -200,6 +250,12 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
                 'is_done': True,
             })
         finally:
+            if tts_worker_task is not None:
+                await tts_queue.put(None)  # tell the worker to stop...
+                try:
+                    await tts_worker_task  # ...and wait for the last sentence's audio
+                except Exception as e:
+                    print(f"[TTS ERROR] worker cleanup: {e}")
             await queue.put(_SENTINEL)
 
     task = asyncio.create_task(producer())
@@ -218,7 +274,7 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
                 # request to a given model can take a while if Ollama has
                 # to load (or pull) it before it can emit any tokens.
                 waited_seconds += HEARTBEAT_INTERVAL_SECONDS
-                status_msg = 'Loading model' if waited_seconds < 60 else 'Still loading model (this can take a while on first use)'
+                status_msg = 'Thinking' if waited_seconds < 60 else 'Still working on a response (a cold model load or a long conversation history can both cause this)'
                 yield 'data: ' + json.dumps({
                     'status': status_msg, 'token': '', 'tool_calls': [], 'is_done': False
                 }) + ' \n\n'
@@ -236,7 +292,8 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile]):
 async def generate(
     id: int = Form(...),
     prompt: str = Form(default=""),
-    files: Optional[List[UploadFile]] = File(default=None)
+    files: Optional[List[UploadFile]] = File(default=None),
+    tts: bool = Form(default=False),
 ):
     print(f"Fetching model for session: {id}...")
 
@@ -252,7 +309,7 @@ async def generate(
 
     model = sessions[id]
 
-    stream = generator_wrapper(model, prompt, valid_files)
+    stream = generator_wrapper(model, prompt, valid_files, want_audio=tts)
     response = StreamingResponse(
         stream,
         media_type='text/event-stream',
