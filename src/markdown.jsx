@@ -68,6 +68,39 @@ function renderTable(rows) {
   return html;
 }
 
+// Helper to highlight code blocks safely with Prism or HTML escape fallback
+function highlightCode(rawCode, language) {
+  let cleanLang = (language || "").trim().toLowerCase();
+
+  // Map common aliases to Prism internal language keys
+  const aliases = {
+    js: "javascript",
+    ts: "typescript",
+    py: "python",
+    sh: "bash",
+    bash: "bash",
+    html: "markup",
+    xml: "markup",
+    yml: "yaml",
+    json: "json"
+  };
+
+  cleanLang = aliases[cleanLang] || cleanLang;
+
+  if (typeof Prism !== "undefined" && cleanLang && Prism.languages[cleanLang]) {
+    try {
+      return Prism.highlight(rawCode, Prism.languages[cleanLang], cleanLang);
+    } catch (err) {
+      console.warn("Prism error:", err);
+    }
+  }
+
+  return rawCode
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export function parseMarkdown(buffer) {
   let html = "";
   let inList = false;
@@ -75,6 +108,8 @@ export function parseMarkdown(buffer) {
   let inCodeBlock = false;
   let inTable = false;
   let inBlockquote = false;
+  let codeLanguage = "";
+  let codeBuffer = [];
   let tableBuffer = [];
   const footnotes = new Map(); // label -> content, in first-seen order
 
@@ -88,16 +123,20 @@ export function parseMarkdown(buffer) {
     // --- Code Block Handling ---
     if (!inCodeBlock && trimmed.startsWith("```")) {
       inCodeBlock = true;
-      html += `<pre><button class="copy-code-btn" data-copy="true">Copy</button><code>`;
+      codeLanguage = trimmed.substring(3).trim();
+      codeBuffer = [];
       continue;
     }
 
     if (inCodeBlock) {
       if (trimmed.startsWith("```")) {
         inCodeBlock = false;
-        html += `</code></pre>`;
+        const rawCode = codeBuffer.join("\n");
+        const highlighted = highlightCode(rawCode, codeLanguage);
+        const langClass = codeLanguage ? ` class="language-${codeLanguage}"` : "";
+        html += `<pre><button class="copy-code-btn" data-copy="true">Copy</button><code${langClass}>${highlighted}</code></pre>`;
       } else {
-        html += line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\n";
+        codeBuffer.push(line);
       }
       continue;
     }
@@ -178,7 +217,12 @@ export function parseMarkdown(buffer) {
   if (inList) html += inOrderedList ? "</ol>" : "</ul>";
   if (inBlockquote) html += "</blockquote>";
   if (inTable) html += renderTable(tableBuffer);
-  if (inCodeBlock) html += "</code></pre>";
+  if (inCodeBlock) {
+    const rawCode = codeBuffer.join("\n");
+    const highlighted = highlightCode(rawCode, codeLanguage);
+    const langClass = codeLanguage ? ` class="language-${codeLanguage}"` : "";
+    html += `<pre><button class="copy-code-btn" data-copy="true">Copy</button><code${langClass}>${highlighted}</code></pre>`;
+  }
 
   // --- Footnotes section ---
   if (footnotes.size > 0) {

@@ -6,9 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>omnichat</title>
     <link id="theme-stylesheet" rel="stylesheet" href="/themes/default.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
   </head>
   <body>
     <div id="root"></div>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+
+    <!-- Configure Autoloader CDN path -->
+    <script>
+      window.Prism = window.Prism || {};
+      window.Prism.plugins = window.Prism.plugins || {};
+      window.Prism.plugins.autoloader = {
+        languages_path: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/'
+      };
+    </script>
+    
+    <!-- Autoloader Plugin -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <!-- Preload Python & common extra languages directly -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
+  
 </html>
