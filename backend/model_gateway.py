@@ -113,23 +113,42 @@ class llm():
             message_payload['content'] += f"\n\n{user_prompt}"
             self.ollama_messages.append(message_payload)
 
-        status = 'Loading model'
+        if len(self.ollama_messages) > self.max_messages + 1:
+            self.ollama_messages = [self.ollama_messages[0]] + self.ollama_messages[-self.max_messages:]
+
+        status = 'Thinking'
         yield {'status': status, 'token': '', 'tool_calls': [], 'is_done': False}
         full_response = {'role': 'assistant', 'content': '', 'tool_calls': []}
 
         try:
-            stream = await self.local_client.chat(
-                model=self.model,
-                messages=self.ollama_messages,
-                tools=tools_list,
-                stream=True,
-                options={"num_ctx": 32768},
-                keep_alive=-1
-            )
+            try:
+                stream = await self.local_client.chat(
+                    model=self.model,
+                    messages=self.ollama_messages,
+                    tools=tools_list,
+                    stream=True,
+                    options={"num_ctx": 32768},
+                    keep_alive=-1,
+                    think=False,
+                )
+            except TypeError:
+                print("[OLLAMA] This ollama client version doesn't support think=False; continuing without it.")
+                stream = await self.local_client.chat(
+                    model=self.model,
+                    messages=self.ollama_messages,
+                    tools=tools_list,
+                    stream=True,
+                    options={"num_ctx": 32768},
+                    keep_alive=-1,
+                )
 
             async for chunk in stream:
-                status = 'Generating'
                 delta = chunk.message
+
+                if getattr(delta, 'thinking', None):
+                    yield {'status': 'Thinking', 'token': '', 'tool_calls': [], 'is_done': False}
+
+                status = 'Generating'
                 if delta.content:
                     full_response['content'] += delta.content
                     yield {'status': status, 'token': delta.content, 'tool_calls': [], 'is_done': False}
