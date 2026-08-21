@@ -79,7 +79,7 @@ export default function VoiceChat({ apiBase, SESSION_ID, setMessages, setToolCal
   return (
     <div className='column' style={{width: '100%', height: '100%'}}>
       <div className='section' style={{display: 'flex', flexGrow: '1'}}>
-        <p>Hello World</p>
+        <p>In Progress, page is under construction</p>
       </div>
       <div className='section' style={{width: '100%', margin: 0}}>
         <button onClick={handleAction}>
