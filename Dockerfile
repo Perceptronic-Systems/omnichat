@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -10,8 +9,14 @@ ENV HF_HOME=/root/.cache/huggingface
 
 COPY requirements.txt .
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages -r requirements.txt
+# Deliberately plain pip install with no BuildKit-specific syntax (no
+# --mount=type=cache). This layer is still only re-run when requirements.txt
+# itself changes -- that's ordinary Docker layer caching, not a BuildKit
+# feature, and it's what actually solves "every code edit reinstalls
+# everything." --no-cache-dir avoids leaving pip's own internal download
+# cache baked uselessly into this layer, since without a persistent mount
+# it can't help future builds anyway.
+RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Pre-download the Kokoro TTS weights at build time, treated the same as
 # any other dependency install rather than lazily on first app startup.
