@@ -3,6 +3,7 @@ import { TaskbarPopup, MENU_TREE } from './taskbar.jsx';
 import Chat from './pages/chat.jsx';
 import Tools from './pages/tools.jsx';
 import Files from './pages/files.jsx';
+import VoiceChat from './pages/voice_chat.jsx';
 import { initApi, clearStoredApi } from './api.jsx';
 
 
@@ -60,6 +61,13 @@ export default function App() {
         break;
       case "files":
         return <Files apiBase={apiBase} />;
+      case "voice_chat":
+        return <VoiceChat
+          apiBase={apiBase}
+          SESSION_ID={SESSION_ID}
+          setMessages={setMessages}
+          setToolCalls={setToolCalls}
+         />;
     }
   }
 
@@ -170,7 +178,7 @@ export default function App() {
         <div id="toolbar">
           {[
           ["icons/chat.svg", "Chat", "chat"],
-          ["icons/voice.svg", "Voice Chat", "voice"],
+          ["icons/voice.svg", "Voice Chat", "voice_chat"],
           ["icons/folders.svg", "Files", "files"],
           ["icons/calendar.svg","Schedule", "schedule"],
           ["icons/wrench.svg","Tool Calls", "tools"]

@@ -226,11 +226,17 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
 
                 tts_worker_task = asyncio.create_task(tts_worker())
 
+            final_chunk = None
+
             async for chunk in model.generate(prompt, files):
-                await queue.put(chunk)
                 if accumulator is not None and chunk.get('token'):
                     for sentence in accumulator.feed(chunk['token']):
                         await tts_queue.put(sentence)
+
+                if chunk.get('is_done'):
+                    final_chunk = chunk
+                    continue
+                await queue.put(chunk)
 
             if accumulator is not None:
                 tail = accumulator.flush()
@@ -243,12 +249,12 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
             # of that still raises, make sure the client still gets a
             # visible message instead of a silently closed connection.
             print(f"[GENERATE ERROR] {e}")
-            await queue.put({
+            final_chunk = {
                 'status': 'error',
                 'token': f"\n\n*Internal error: {e}*",
                 'tool_calls': [],
                 'is_done': True,
-            })
+            }
         finally:
             if tts_worker_task is not None:
                 await tts_queue.put(None)  # tell the worker to stop...
@@ -256,6 +262,11 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
                     await tts_worker_task  # ...and wait for the last sentence's audio
                 except Exception as e:
                     print(f"[TTS ERROR] worker cleanup: {e}")
+            # Only now, after every audio chunk has definitely been queued,
+            # is it safe to send the chunk that tells the client to stop
+            # listening.
+            if final_chunk is not None:
+                await queue.put(final_chunk)
             await queue.put(_SENTINEL)
 
     task = asyncio.create_task(producer())

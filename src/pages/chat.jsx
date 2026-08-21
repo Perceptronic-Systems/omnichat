@@ -163,18 +163,14 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
     const handleKeyDown    = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
     // ─── Voice input ──────────────────────────────────────────────────────────
-    // Final transcript lands in the input box for the user to review/edit and
-    // send themselves, same as if they'd typed it -- it does NOT auto-send.
     const handleFinalTranscript = useCallback((text) => {
-      setInput(text);
-      textareaRef.current?.focus();
-    }, []);
+      sendMessageWithText(text, []);
+    }, [sendMessageWithText]);
 
     const { voiceState, partialText, error: voiceError, startRecording, stopRecording }
       = useVoiceInput({ apiBase, onFinalTranscript: handleFinalTranscript });
 
     const isRecording = voiceState === 'recording';
-    const isBusyWithVoice = isRecording || voiceState === 'transcribing';
     const micDisabled = apiBase === 'browser' || voiceState === 'requesting-permission' || voiceState === 'transcribing';
 
     const handleMicClick = () => {
@@ -275,12 +271,10 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
                   <textarea
                     id="input-field"
                     ref={textareaRef}
-                    value={isRecording ? partialText : input}
+                    value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
-                    disabled={isBusyWithVoice}
-                    placeholder={isRecording ? "Listening…" : undefined}
                   />
                   <button
                     id="mic-button"
@@ -299,12 +293,11 @@ export default function Chat({ SESSION_ID, messages, setMessages, setToolCalls, 
                   </button>
                   <button id="send-button" onClick={sendMessage}>Send</button>
                 </div>
-
                 {(isRecording || voiceState === 'transcribing' || voiceError) && (
                   <div id="voice-status-row">
                     {voiceError
                       ? <span className="voice-error">{voiceError}</span>
-                      : <span className="voice-partial">{(isRecording ? "Listening…" : "Transcribing…")}</span>}
+                      : <span className="voice-partial">{partialText || (isRecording ? "Listening…" : "Transcribing…")}</span>}
                   </div>
                 )}
               </div>
