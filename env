@@ -1,0 +1,8 @@
+# Automatically picked up by `docker compose` for anyone in this repo --
+# no manual export/setup needed. Required for the Dockerfile's
+# `RUN --mount=type=cache` syntax (BuildKit-only). BuildKit has been the
+# default for plain `docker build` since Docker Engine 23.0, but Compose's
+# own build step doesn't always inherit that automatically depending on
+# your Compose version, hence pinning it here explicitly.
+DOCKER_BUILDKIT=1
+COMPOSE_DOCKER_CLI_BUILD=1
