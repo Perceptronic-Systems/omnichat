@@ -2,6 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
 # Pin this explicitly so build-time download and runtime lookup are
 # guaranteed to agree on where the weights live, regardless of what the
 # base image's default HOME/cache resolution would otherwise pick.
@@ -9,32 +11,9 @@ ENV HF_HOME=/root/.cache/huggingface
 
 COPY requirements.txt .
 
-# Deliberately plain pip install with no BuildKit-specific syntax (no
-# --mount=type=cache). This layer is still only re-run when requirements.txt
-# itself changes -- that's ordinary Docker layer caching, not a BuildKit
-# feature, and it's what actually solves "every code edit reinstalls
-# everything." --no-cache-dir avoids leaving pip's own internal download
-# cache baked uselessly into this layer, since without a persistent mount
-# it can't help future builds anyway.
-RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements-base.txt
 
-# Pre-download the Kokoro TTS weights at build time, treated the same as
-# any other dependency install rather than lazily on first app startup.
-# This bakes a few hundred MB into the image, but means: (a) container
-# startup never silently blocks on a network download while appearing
-# "up" to nginx/docker, and (b) a download failure shows up as a normal
-# build error right here, not as a confusing runtime state days later.
-# NOTE: voice/lang_code here must stay in sync with VOICE/LANG_CODE in
-# backend/text_to_speech.py.
 RUN python3 -c "from kokoro import KPipeline; p = KPipeline(lang_code='b'); list(p('Hello.', voice='bm_daniel'))"
-
-# Same treatment for the faster-whisper final-pass STT model. NOTE: model
-# size/device/compute_type here must stay in sync with
-# FASTER_WHISPER_MODEL_SIZE / FASTER_WHISPER_DEVICE / FASTER_WHISPER_COMPUTE_TYPE
-# in backend/speech_to_text.py (or whatever env vars override them at
-# runtime) -- if those ever diverge, the container will end up needing a
-# second, different download at startup despite this step having already
-# run, defeating the point.
 RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
 
 COPY backend/ ./backend/
