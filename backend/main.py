@@ -38,6 +38,12 @@ async def lifespan(app: FastAPI):
         # available, instead of the whole process crash-looping.
         print(f"[VOSK] Failed to load model, voice input will be unavailable: {e}", flush=True)
     try:
+        speech_to_text.load_final_pass_model()
+    except Exception as e:
+        # Additive on top of Vosk, not load-bearing -- TranscriptionSession
+        # falls back to Vosk's own final result if this never loads.
+        print(f"[WHISPER] Failed to load final-pass model, falling back to Vosk-only transcription: {e}", flush=True)
+    try:
         text_to_speech.load_model()
     except Exception as e:
         # Same reasoning as above: TTS is additive, never load-bearing for
@@ -65,6 +71,7 @@ def get_status():
 def get_voice_status():
     return {
         "stt_ready": speech_to_text.is_ready(),
+        "stt_final_pass_ready": speech_to_text.final_pass_ready(),
         "tts_ready": text_to_speech.is_ready(),
     }
 
@@ -160,7 +167,7 @@ async def websocket_transcribe(websocket: WebSocket):
                 except (json.JSONDecodeError, TypeError):
                     continue
                 if control.get("type") == "stop":
-                    result = session.finalize()
+                    result = await session.finalize()
                     await websocket.send_text(json.dumps(result))
                     break
     except WebSocketDisconnect:
@@ -235,6 +242,14 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
             elif want_audio:
                 print(f"[TTS] want_audio=True but is_ready()=False -- skipping TTS entirely for this request", flush=True)
 
+            # The terminal chunk (is_done=True) is held back rather than
+            # forwarded immediately. The client returns as soon as it sees
+            # is_done, so if we sent it the moment text generation finishes,
+            # any audio still pending -- most importantly the LAST sentence,
+            # which only gets flushed into the TTS queue *after* this loop
+            # ends -- would be sent after the client already stopped
+            # listening and silently dropped. Only the final chunk actually
+            # needs to wait; everything else still streams immediately.
             final_chunk = None
 
             async for chunk in model.generate(prompt, files):

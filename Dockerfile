@@ -28,6 +28,15 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 # backend/text_to_speech.py.
 RUN python3 -c "from kokoro import KPipeline; p = KPipeline(lang_code='b'); list(p('Hello.', voice='bm_daniel'))"
 
+# Same treatment for the faster-whisper final-pass STT model. NOTE: model
+# size/device/compute_type here must stay in sync with
+# FASTER_WHISPER_MODEL_SIZE / FASTER_WHISPER_DEVICE / FASTER_WHISPER_COMPUTE_TYPE
+# in backend/speech_to_text.py (or whatever env vars override them at
+# runtime) -- if those ever diverge, the container will end up needing a
+# second, different download at startup despite this step having already
+# run, defeating the point.
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
+
 COPY backend/ ./backend/
 
 COPY backend/entrypoint.sh .
