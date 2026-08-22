@@ -1,0 +1,44 @@
+# Keeps `docker compose build`'s context small -- everything here gets
+# excluded from what's sent to the Docker daemon before the build even
+# starts. This matters independently of layer caching: a huge context
+# gets re-uploaded on every single build regardless of cache hits, which
+# is its own source of slowness separate from whether pip reinstalls
+# anything. node_modules/ is almost certainly the single biggest
+# contributor here -- the whole point of this file is that the backend
+# image (build: . -> COPY backend/ ./backend/) never touches any of the
+# frontend at all.
+
+.git
+.gitignore
+
+# Frontend -- entirely unrelated to the backend image
+node_modules
+src
+public
+index.html
+package.json
+package-lock.json
+vite.config.js
+
+# Repo-level docs -- irrelevant to the build, no reason to upload them
+README.md
+LICENSE
+
+# Model data -- Vosk is bind-mounted as a volume at runtime, Kokoro is
+# fetched by its own explicit RUN step in the Dockerfile. Neither should
+# ever be pulled in via COPY/build context.
+models/
+knowledge_base/
+
+# Python/OS cruft -- stale .pyc files from running things locally (e.g.
+# backend/__pycache__) shouldn't ride along into the image either
+__pycache__
+*.pyc
+.venv
+venv
+*.egg-info
+
+# Editor/OS noise
+.vscode
+.idea
+.DS_Store
