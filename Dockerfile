@@ -11,7 +11,7 @@ ENV HF_HOME=/root/.cache/huggingface
 
 COPY requirements.txt .
 
-RUN uv pip install --system --no-cache -r requirements-base.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 RUN python3 -c "from kokoro import KPipeline; p = KPipeline(lang_code='b'); list(p('Hello.', voice='bm_daniel'))"
 RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
