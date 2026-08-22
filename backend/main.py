@@ -202,6 +202,7 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
             if want_audio and text_to_speech.is_ready():
                 accumulator = text_to_speech.SentenceAccumulator()
                 tts_queue = asyncio.Queue()
+                print("[TTS] pipeline engaged for this request", flush=True)
 
                 async def tts_worker():
                     # Strictly one sentence at a time, in submission order.
@@ -213,24 +214,33 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
                     while True:
                         sentence = await tts_queue.get()
                         if sentence is None:
+                            print("[TTS] worker received stop signal", flush=True)
                             break
+                        print(f"[TTS] synthesizing: {sentence!r}", flush=True)
                         try:
                             audio_b64 = await text_to_speech.synthesize(sentence)
                             if audio_b64:
+                                print(f"[TTS] synthesized {len(audio_b64)} b64 chars for: {sentence!r}", flush=True)
                                 await queue.put({
                                     'status': 'Generating', 'token': '', 'tool_calls': [],
                                     'is_done': False, 'audio': audio_b64,
                                 })
+                                print("[TTS] audio chunk queued for delivery to client", flush=True)
+                            else:
+                                print(f"[TTS] synthesize() returned EMPTY for: {sentence!r}", flush=True)
                         except Exception as e:
-                            print(f"[TTS ERROR] {e}")
+                            print(f"[TTS ERROR] {e}", flush=True)
 
                 tts_worker_task = asyncio.create_task(tts_worker())
+            elif want_audio:
+                print(f"[TTS] want_audio=True but is_ready()=False -- skipping TTS entirely for this request", flush=True)
 
             final_chunk = None
 
             async for chunk in model.generate(prompt, files):
                 if accumulator is not None and chunk.get('token'):
                     for sentence in accumulator.feed(chunk['token']):
+                        print(f"[TTS] sentence boundary detected: {sentence!r}", flush=True)
                         await tts_queue.put(sentence)
 
                 if chunk.get('is_done'):
@@ -241,6 +251,7 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
             if accumulator is not None:
                 tail = accumulator.flush()
                 if tail:
+                    print(f"[TTS] flushing tail sentence: {tail!r}", flush=True)
                     await tts_queue.put(tail)
 
         except Exception as e:
