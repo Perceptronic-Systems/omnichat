@@ -241,7 +241,7 @@ class llm():
                 self.ollama_messages.append({'role': 'tool', 'content': str(tool_output)})
 
             # Recursive step for Ollama tool evaluation
-            async for item in self.generate(''):
+            async for item in self.generate('', tts=tts):
                 yield item
         else:
             self.ollama_messages.append({
