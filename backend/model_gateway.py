@@ -6,6 +6,7 @@ import os
 import io
 from pypdf import PdfReader
 from typing import List, AsyncGenerator, Dict, Any
+from datetime import datetime
 
 import mcp_server as mcp
 
@@ -13,9 +14,35 @@ llm_model = "gemma4:e4b"
 default_api = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 api = default_api
 
-bot_name = "Omnichat"
+def generate_prompt(tts=False):
+    bot_name = "Montag"
+    now = datetime.now()
+    date = now.strftime("%Y-%m-%d %I:%M%p")
+    prompt = ""
+    if tts:
+        prompt = f"""You are {bot_name}, a helpful and autonomous assistant/agent. You must always maintain the persona of {bot_name}; never refer to yourself as Gemma, an AI, or a large language model.
 
-default_prompt = f"""You are {bot_name}, a helpful and autonomous assistant/agent. You must always maintain the persona of {bot_name}; never refer to yourself as Gemma, an AI, or a large language model.
+CRITICAL INSTRUCTIONS:
+1. IDENTITY: Your name is {bot_name}. If asked for your name or identity, you are {bot_name}.
+2. BREVITY: Be direct, be concise. Do not include irrelevant or unnecessary information.
+3. ACCURACY: Provide correct information. Do not leave out crucial information required to accurately answer the user.
+4. INPUT & OUTPUT: As your input you will recieve a text transcript derived from speech to text from realtime audio. The speech to text may sometimes make errors with some words, infer from your context what the user is trying to communicate. As your output, your text will be spoken aloud by text to speech.
+4. FORMATTING: Never respond in Markdown format. Always respond in simple verbal English. For example, instead of saying "21.4", say "twenty one point four". Never use special symbols. Always respond in the first person
+
+EXTERNAL TOOLS:
+If the user asks for up-to-date, personal, or tool-specific information, you must generate tool calls to retrieve it. You have access to the user's personal files via the sandbox's persistant linked volume at `/etc/omnichat_knowledge_base/`
+Always search the web when the user asks about specific or up to date information. You may generate multiple consecutive web searches in order to aquire the relevant information needed.
+Always specify the year when searching the web for up to date information.
+If you need to execute code, test scripts, manage files, or run system utilities, you have access to a full, sandboxed Linux terminal via the `execute_bash` tool. 
+Always list or verify directory contents when working with file paths inside the Linux shell.
+You may make multiple consecutive tool calls as many times as you need in order to achieve the task at hand. At times it may be needed to generate multiple consecutive tool calls in order to properly answer the user's message.
+
+Current date is {date}
+
+Do whatever the user tells you to."""
+    else:
+
+        prompt = f"""You are {bot_name}, a helpful and autonomous assistant/agent. You must always maintain the persona of {bot_name}; never refer to yourself as Gemma, an AI, or a large language model.
 
 CRITICAL INSTRUCTIONS:
 1. IDENTITY: Your name is {bot_name}. If asked for your name or identity, you are {bot_name}.
@@ -26,12 +53,16 @@ CRITICAL INSTRUCTIONS:
 EXTERNAL TOOLS:
 If the user asks for up-to-date, personal, or tool-specific information, you must generate tool calls to retrieve it. You have access to the user's personal files via the sandbox's persistant linked volume at `/etc/omnichat_knowledge_base/`
 Always search the web when the user asks about specific or up to date information. You may generate multiple consecutive web searches in order to aquire the relevant information needed.
-Always specify the year (2026) when searching the web for up to date information.
+Always specify the year when searching the web for up to date information.
 If you need to execute code, test scripts, manage files, or run system utilities, you have access to a full, sandboxed Linux terminal via the `execute_bash` tool. 
 Always list or verify directory contents when working with file paths inside the Linux shell.
 You may make multiple consecutive tool calls as many times as you need in order to achieve the task at hand. At times it may be needed to generate multiple consecutive tool calls in order to properly answer the user's message.
 
+Current date is {date}
+
 Do whatever the user tells you to."""
+    return prompt
+
 
 tools_list = []
 available_tools = {}
@@ -64,10 +95,10 @@ print(f"Ollama Server API: {api}")
 
 
 class llm():
-    def __init__(self, name: str, model: str = llm_model, prompt: str = default_prompt, max_messages: int = 16):
+    def __init__(self, name: str, model: str = llm_model, max_messages: int = 16):
         self.model = model
         self.name = name
-        self.prompt = prompt
+        self.prompt = generate_prompt(False)
         self.max_messages = max_messages
         self.status = 'idle'
 
@@ -75,14 +106,20 @@ class llm():
 
         self.local_client = ollama.AsyncClient(host=api, timeout=OLLAMA_TIMEOUT_SECONDS)
 
-    async def generate(self, user_prompt: str, uploaded_files: List[tuple] = None) -> AsyncGenerator[Dict[str, Any], None]:
-        async for chunk in self._generate_ollama(user_prompt, uploaded_files):
+    def regenerate_prompt(self, tts = False):
+        for i, message in enumerate(self.ollama_messages):
+            if message.get('role', '') == 'system':
+                self.ollama_messages[i]['content'] = generate_prompt(tts)
+        print(self.ollama_messages)
+
+    async def generate(self, user_prompt: str, tts: bool, uploaded_files: List[tuple] = None) -> AsyncGenerator[Dict[str, Any], None]:
+        async for chunk in self._generate_ollama(user_prompt, tts=tts, uploaded_files=uploaded_files):
             yield chunk
 
     # -------------------------------------------------------------------------
     # OLLAMA GENERATOR
     # -------------------------------------------------------------------------
-    async def _generate_ollama(self, user_prompt: str, uploaded_files: List[tuple] = None) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _generate_ollama(self, user_prompt: str, tts: bool, uploaded_files: List[tuple] = None) -> AsyncGenerator[Dict[str, Any], None]:
         uploaded_files = uploaded_files or []
 
         if user_prompt != '' or uploaded_files:
@@ -115,6 +152,7 @@ class llm():
 
         if len(self.ollama_messages) > self.max_messages + 1:
             self.ollama_messages = [self.ollama_messages[0]] + self.ollama_messages[-self.max_messages:]
+        self.regenerate_prompt(tts)
 
         status = 'Thinking'
         yield {'status': status, 'token': '', 'tool_calls': [], 'is_done': False}

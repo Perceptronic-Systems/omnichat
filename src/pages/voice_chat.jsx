@@ -361,11 +361,12 @@ export default function VoiceChat({ apiBase, SESSION_ID, setMessages, setToolCal
         <AudioVisualizer analyserRef={analyserRef} />
       </div>
       <div className='section row' style={{width: '100%', margin: 0, alignItems: 'center', gap: '0.75rem'}}>
-        <button onClick={handleAction} style={{backgroundColor: '#226089', color: "white", padding: '1rem'}}>
+        <button onClick={handleAction} className='talk-button'>
           {micLabel}
         </button>
-        <label style={{display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0 0.5rem'}}>
+        <label style={{display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0 0.5rem'}} className='checkbox-label'>
           <input
+            className='checkbox'
             type="checkbox"
             checked={alwaysListening}
             onChange={toggleAlwaysListening}

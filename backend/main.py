@@ -264,7 +264,7 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
             # needs to wait; everything else still streams immediately.
             final_chunk = None
 
-            async for chunk in model.generate(prompt, files):
+            async for chunk in model.generate(prompt, tts=want_audio, uploaded_files=files):
                 if accumulator is not None and chunk.get('token'):
                     for sentence in accumulator.feed(chunk['token']):
                         print(f"[TTS] sentence boundary detected: {sentence!r}", flush=True)

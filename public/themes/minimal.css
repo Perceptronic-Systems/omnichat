@@ -139,3 +139,31 @@ tbody tr:hover { background-color: var(--bg-elevated); }
 .recording {
     background: radial-gradient(circle, rgba(106, 213, 255, 0.5) 0%, transparent 75%);
 }
+
+.talk-button {
+    background-color: rgb(45, 82, 124);
+    color: white;
+    border-style: none;
+    border-radius: 0.5rem;
+    --cut: 12px;
+    padding: 1rem;
+}
+
+.talk-button:hover {
+    background-color: rgb(60, 108, 170);
+}
+
+.talk-button:active {
+    background-color: rgb(9, 95, 145);
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.checkbox:checked {
+  background-color: #24a1c0;
+}

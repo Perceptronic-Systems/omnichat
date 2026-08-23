@@ -168,14 +168,14 @@ export function useVoiceInput({ apiBase, onFinalTranscript, onAudioChunk, onSpee
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       try {
-        await audioContext.audioWorklet.addModule('/audio-worklet-processor.js');
+        await audioContext.audioWorklet.addModule('audio-worklet-processor.js');
       } catch (workletErr) {
         // Chrome collapses almost any addModule failure (404, wrong path,
         // syntax error in the file) into a generic
         // "AbortError: The operation was aborted." -- surface something
         // actually actionable instead.
         throw new Error(
-          'Failed to load /audio-worklet-processor.js. Check that the file ' +
+          'Failed to load audio-worklet-processor.js. Check that the file ' +
           'is served as a static asset (e.g. in your public/ folder) and ' +
           `check the Network tab for the real error. (${workletErr.name}: ${workletErr.message})`
         );

@@ -415,3 +415,41 @@ td button[title="Delete"]:hover {
 .recording {
     background: radial-gradient(circle, rgba(106, 213, 255, 0.5) 0%, transparent 75%);
 }
+
+.talk-button {
+    background-color: rgb(45, 82, 124);
+    color: white;
+    border-style: none;
+    --cut: 12px;
+    clip-path: polygon(
+        0% 0%, calc(100% - var(--cut)) 0%, 
+        100% var(--cut), 100% 100%, 
+        calc(100% - var(--cut)) 100%, var(--cut) 100%, 
+        0% calc(100% - var(--cut)), 0% var(--cut)
+    );
+    padding: 1rem;
+}
+
+.talk-button:hover {
+    background-color: rgb(60, 108, 170);
+}
+
+.talk-button:active {
+    background-color: rgb(9, 95, 145);
+}
+
+.checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #4a6b78;
+  background-color: #0d0f11;
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.checkbox:checked {
+  background-color: #11acd3;
+}
