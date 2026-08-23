@@ -1,7 +1,7 @@
 // audio-worklet-processor.js
-// Must be served as a static file at audio-worklet-processor.js (place it
+// Must be served as a static file at /audio-worklet-processor.js (place it
 // in the frontend's public/ directory) -- it's loaded via
-// audioContext.audioWorklet.addModule('audio-worklet-processor.js') and
+// audioContext.audioWorklet.addModule('/audio-worklet-processor.js') and
 // runs on the dedicated audio rendering thread, not the main thread.
 //
 // Job: take mic input at whatever native sample rate the AudioContext is
@@ -10,9 +10,21 @@
 // back to the main thread. Doing the downsample + int16 conversion here
 // rather than on the main thread keeps postMessage traffic small (raw
 // int16 bytes, not float32) and keeps the UI thread free.
+//
+// Also does simple energy-based voice activity detection (VAD) for
+// always-listening mode: posts {type:'vad', speaking:true/false} events
+// when speech starts, and again after a hangover period of sustained
+// quiet (so brief pauses mid-sentence don't get treated as the end of the
+// utterance). This is deliberately simple -- no ML model, just an RMS
+// energy threshold -- and won't distinguish real speech from any other
+// sustained loud sound. Good enough as a first pass; a proper VAD model
+// would be the upgrade path if false triggers turn out to be a problem.
 
 const TARGET_SAMPLE_RATE = 16000;
 const CHUNK_SIZE = 4096; // samples at TARGET_SAMPLE_RATE per message (~256ms)
+
+const VAD_THRESHOLD = 0.015;       // RMS energy above this counts as "speech"
+const VAD_HANGOVER_MS = 700;       // sustained quiet for this long -> speech-end
 
 class DownsamplingProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -22,12 +34,53 @@ class DownsamplingProcessor extends AudioWorkletProcessor {
     // AudioContext's native rate, not TARGET_SAMPLE_RATE.
     this._resampleRatio = sampleRate / TARGET_SAMPLE_RATE;
     this._resamplePos = 0;
+
+    this._vadEnabled = false;
+    this._speaking = false;
+    this._quietSinceMs = null;
+    this._elapsedMs = 0;
+
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === 'set-vad-enabled') {
+        this._vadEnabled = !!e.data.enabled;
+        if (!this._vadEnabled) {
+          this._speaking = false;
+          this._quietSinceMs = null;
+        }
+      }
+    };
+  }
+
+  _runVad(channelData, blockMs) {
+    this._elapsedMs += blockMs;
+    if (!this._vadEnabled) return;
+
+    let sumSquares = 0;
+    for (let i = 0; i < channelData.length; i++) sumSquares += channelData[i] * channelData[i];
+    const rms = Math.sqrt(sumSquares / channelData.length);
+
+    if (rms >= VAD_THRESHOLD) {
+      this._quietSinceMs = null;
+      if (!this._speaking) {
+        this._speaking = true;
+        this.port.postMessage({ type: 'vad', speaking: true });
+      }
+    } else if (this._speaking) {
+      if (this._quietSinceMs === null) this._quietSinceMs = this._elapsedMs;
+      if (this._elapsedMs - this._quietSinceMs >= VAD_HANGOVER_MS) {
+        this._speaking = false;
+        this._quietSinceMs = null;
+        this.port.postMessage({ type: 'vad', speaking: false });
+      }
+    }
   }
 
   process(inputs) {
     const input = inputs[0];
     const channelData = input && input[0]; // mono: first channel only
     if (!channelData || channelData.length === 0) return true;
+
+    this._runVad(channelData, (channelData.length / sampleRate) * 1000);
 
     // Linear-interpolation downsample from native rate -> 16kHz.
     for (; this._resamplePos < channelData.length; this._resamplePos += this._resampleRatio) {

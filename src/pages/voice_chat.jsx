@@ -3,51 +3,97 @@ import { useVoiceInput } from '../voice.jsx';
 import { generateResponse } from '../api.jsx';
 import { parseMarkdown } from "../markdown.jsx";
 
+// ─── Audio playback queue ───────────────────────────────────────────────────
+//
+// Plays synthesized sentence audio back-to-back as it arrives. Deliberately
+// routes playback through a real <audio> element (via an Object URL) rather
+// than straight to AudioContext.destination: browsers' built-in echo
+// cancellation (the `echoCancellation: true` constraint used when opening
+// the mic in voice.jsx) reliably references <audio>/<video> element
+// playback, but Web Audio API output sent directly to
+// AudioContext.destination isn't always included in that reference path.
+// This is a mitigation, not a guarantee -- on some browsers/hardware the
+// mic can still pick up speaker bleed. Headphones remain the fully-reliable
+// fix if false interruptions from the bot's own voice turn out to be a
+// problem in practice.
+//
+// The <audio> element's output is still routed through an AnalyserNode via
+// MediaElementAudioSourceNode, so the Jarvis visualization keeps working.
 function useAudioQueue() {
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
-  const queueRef = useRef([]);       // pending base64 WAV strings
+  const audioElRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const queueRef = useRef([]);        // pending base64 WAV strings
+  const currentUrlRef = useRef(null); // Object URL for whatever's playing now
   const playingRef = useRef(false);
 
-  const getCtx = () => {
+  const getGraph = () => {
     if (!audioCtxRef.current) {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256; // Provides 128 frequency bins
+      analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.8;
-      
+
+      const audioEl = new Audio();
+      audioEl.autoplay = false;
+      const sourceNode = ctx.createMediaElementSource(audioEl);
+      sourceNode.connect(analyser);
+      analyser.connect(ctx.destination);
+
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
+      audioElRef.current = audioEl;
+      sourceNodeRef.current = sourceNode;
     }
-    return { ctx: audioCtxRef.current, analyser: analyserRef.current };
+    return {
+      ctx: audioCtxRef.current,
+      analyser: analyserRef.current,
+      audioEl: audioElRef.current,
+    };
   };
 
-  const playNext = useCallback(async () => {
+  const releaseCurrentUrl = () => {
+    if (currentUrlRef.current) {
+      URL.revokeObjectURL(currentUrlRef.current);
+      currentUrlRef.current = null;
+    }
+  };
+
+  const playNext = useCallback(() => {
     if (playingRef.current) return;
     const next = queueRef.current.shift();
     if (!next) return;
     playingRef.current = true;
 
-    const { ctx, analyser } = getCtx();
-    const bytes = Uint8Array.from(atob(next), c => c.charCodeAt(0));
-    try {
-      const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
-      
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      
-      // Route audio through AnalyserNode before playing through speakers
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
+    const { ctx, audioEl } = getGraph();
+    if (ctx.state === 'suspended') ctx.resume();
 
-      source.onended = () => {
+    try {
+      const bytes = Uint8Array.from(atob(next), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: 'audio/wav' });
+      releaseCurrentUrl();
+      const url = URL.createObjectURL(blob);
+      currentUrlRef.current = url;
+
+      audioEl.onended = () => {
         playingRef.current = false;
         playNext(); // chain to the next queued sentence
       };
-      source.start();
+      audioEl.onerror = (e) => {
+        console.error('TTS playback failed:', e);
+        playingRef.current = false;
+        playNext();
+      };
+      audioEl.src = url;
+      audioEl.play().catch(err => {
+        console.error('audio.play() failed:', err);
+        playingRef.current = false;
+      });
     } catch (err) {
-      console.error('decodeAudioData failed:', err);
-      playingRef.current = false; // don't get stuck if this sentence fails
+      console.error('Failed to queue audio chunk:', err);
+      playingRef.current = false;
+      playNext();
     }
   }, []);
 
@@ -56,10 +102,25 @@ function useAudioQueue() {
     playNext();
   }, [playNext]);
 
-  return { enqueue, analyserRef };
+  // Interruption support: stop whatever's playing right now and drop
+  // everything still queued, immediately.
+  const stopAll = useCallback(() => {
+    queueRef.current = [];
+    playingRef.current = false;
+    const audioEl = audioElRef.current;
+    if (audioEl) {
+      audioEl.onended = null;
+      audioEl.pause();
+      audioEl.removeAttribute('src');
+      audioEl.load();
+    }
+    releaseCurrentUrl();
+  }, []);
+
+  return { enqueue, stopAll, analyserRef, isPlaying: () => playingRef.current || queueRef.current.length > 0 };
 }
 
-function JarvisCanvas({ analyserRef }) {
+function AudioVisualizer({ analyserRef }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -200,7 +261,14 @@ function JarvisCanvas({ analyserRef }) {
 }
 
 export default function VoiceChat({ apiBase, SESSION_ID, setMessages, setToolCalls }) {
-  const { enqueue, analyserRef } = useAudioQueue();
+  const { enqueue, stopAll, analyserRef, isPlaying } = useAudioQueue();
+  const [alwaysListening, setAlwaysListening] = useState(false);
+
+  // Tracks the AbortController for whatever generateResponse() call is
+  // currently in flight, if any -- null when nothing's running. Used by
+  // the interruption path below.
+  const abortControllerRef = useRef(null);
+  const respondingRef = useRef(false); // true from send until the response fully finishes
 
   const addMessage = useCallback((role, html, extra = {}) => {
     const id = Date.now() + Math.random();
@@ -212,47 +280,100 @@ export default function VoiceChat({ apiBase, SESSION_ID, setMessages, setToolCal
     setMessages(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
   }, [setMessages]);
 
+  // Interruption: called the instant VAD detects the user has started
+  // talking. If the bot is currently generating and/or its audio is still
+  // playing, cancel both immediately. If nothing's happening, this is just
+  // the normal start of the user's turn and is a no-op.
+  const handleSpeechStart = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (isPlaying()) {
+      stopAll();
+    }
+  }, [isPlaying, stopAll]);
+
   const { voiceState, partialText, error, startRecording, stopRecording } = useVoiceInput({
     apiBase,
+    alwaysListening,
+    onSpeechStart: handleSpeechStart,
     onFinalTranscript: async (text) => {
       addMessage('user', text);
       let generated = "";
       const botMessage = addMessage('bot', '');
-      for await (const { token, status, audio } of generateResponse(
-        text, SESSION_ID, [], apiBase, [], null, true
-      )) {
-        if (token && status) {
-          generated += token;
-          updateMessage(botMessage, { html: parseMarkdown(generated), status, streaming: true });
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      respondingRef.current = true;
+
+      try {
+        for await (const { token, status, audio } of generateResponse(
+          text, SESSION_ID, [], apiBase, [], null, true, controller.signal
+        )) {
+          if (token && status) {
+            generated += token;
+            updateMessage(botMessage, { html: parseMarkdown(generated), status, streaming: true });
+          }
+          if (audio) {
+            enqueue(audio);
+          }
         }
-        if (audio) {
-          console.log('audio');
-          enqueue(audio);
+      } finally {
+        updateMessage(botMessage, { streaming: false });
+        respondingRef.current = false;
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
         }
       }
-      updateMessage(botMessage, { streaming: false });
     }
   });
 
   const handleAction = () => {
-    if (voiceState === 'recording')
-    {
-      stopRecording();
-    } else {
+    if (voiceState === 'idle' || voiceState === 'error') {
       startRecording();
+    } else {
+      stopRecording();
     }
   };
+
+  const toggleAlwaysListening = () => {
+    // Switching modes while active would leave the hook's internal mode
+    // ref out of sync with an in-progress session -- stop first if needed.
+    if (voiceState !== 'idle' && voiceState !== 'error') {
+      stopRecording();
+    }
+    setAlwaysListening(v => !v);
+  };
+
+  const micLabel = {
+    idle: 'Talk',
+    'requesting-permission': 'Requesting mic…',
+    listening: alwaysListening ? 'Listening…' : 'Talk',
+    recording: 'Stop',
+    transcribing: 'Transcribing…',
+    error: 'Talk',
+  }[voiceState] || 'Talk';
 
   return (
     <div className='column' style={{width: '100%', height: '100%'}}>
       <div className='section' style={{display: 'flex', flexGrow: '1', position: 'relative', overflow: 'hidden'}}>
-        <JarvisCanvas analyserRef={analyserRef} />
+        <AudioVisualizer analyserRef={analyserRef} />
       </div>
-      <div className='section row' style={{width: '100%', margin: 0}}>
+      <div className='section row' style={{width: '100%', margin: 0, alignItems: 'center', gap: '0.75rem'}}>
         <button onClick={handleAction} style={{backgroundColor: '#226089', color: "white", padding: '1rem'}}>
-          {voiceState === 'recording' ? 'Stop' : 'Talk'}
-          {error && <p style={{color: 'red'}}>{error}</p>}
+          {micLabel}
         </button>
+        <label style={{display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0 0.5rem'}}>
+          <input
+            type="checkbox"
+            checked={alwaysListening}
+            onChange={toggleAlwaysListening}
+            disabled={voiceState !== 'idle' && voiceState !== 'error'}
+          />
+          Always listening
+        </label>
+        {error && <p style={{color: 'red'}}>{error}</p>}
         <p style={{padding: '1rem'}}>{partialText}</p>
       </div>
     </div>

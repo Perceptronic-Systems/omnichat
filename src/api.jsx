@@ -21,7 +21,7 @@ export function initApi() {
 
 export function clearStoredApi() { localStorage.removeItem("omnichat_api_url"); }
 
-export async function* generateResponse(prompt, id, files = [], apiBase, history = [], onModelProgress, tts = false) {
+export async function* generateResponse(prompt, id, files = [], apiBase, history = [], onModelProgress, tts = false, externalSignal = null) {
   if (apiBase === "browser") {
     yield* generateResponseWebLLM(prompt, history, onModelProgress);
     return;
@@ -36,11 +36,17 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
     formData.append("files", new Blob([]), "");
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 min hard cap
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), 180_000); // 3 min hard cap
+  // Combine our own timeout with an externally-provided signal (e.g. so a
+  // caller can cancel mid-response for interruption/barge-in) without
+  // either one having to know about the other.
+  const signal = externalSignal
+    ? AbortSignal.any([timeoutController.signal, externalSignal])
+    : timeoutController.signal;
 
   try {
-    const response = await fetch(`${apiBase}generate`, { method: "POST", body: formData, signal: controller.signal });
+    const response = await fetch(`${apiBase}generate`, { method: "POST", body: formData, signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const reader = response.body.getReader();
@@ -72,6 +78,12 @@ export async function* generateResponse(prompt, id, files = [], apiBase, history
       }
     }
   } catch (err) {
+    // A deliberate external cancellation (barge-in interruption) isn't a
+    // failure -- don't surface a scary connection-error message for it,
+    // the caller already knows it interrupted on purpose.
+    if (err.name === "AbortError" && externalSignal?.aborted) {
+      return;
+    }
     yield {
       token: `\n\n*⚠️ Connection error: ${err.name === "AbortError" ? "request timed out" : err.message}*`,
       status: "error",

@@ -169,7 +169,19 @@ async def websocket_transcribe(websocket: WebSocket):
                 if control.get("type") == "stop":
                     result = await session.finalize()
                     await websocket.send_text(json.dumps(result))
-                    break
+                    # Previously: `break` here, closing the connection after
+                    # one utterance -- correct for push-to-talk (client
+                    # reopens a fresh socket every press), but wrong for
+                    # always-listening mode, where the client's VAD sends
+                    # 'stop' automatically at each detected pause and wants
+                    # to keep streaming audio for the *next* utterance on
+                    # the same connection. A fresh session per utterance is
+                    # still correct -- KaldiRecognizer's internal state
+                    # shouldn't carry over -- so just swap in a new one and
+                    # keep the loop going. Real disconnects are still
+                    # handled by the websocket.disconnect branch above.
+                    session = speech_to_text.TranscriptionSession()
+                    continue
     except WebSocketDisconnect:
         pass
     except Exception as e:
