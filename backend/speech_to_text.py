@@ -102,8 +102,37 @@ def _transcribe_final_sync(pcm16_bytes: bytes) -> str:
 
     audio_i16 = np.frombuffer(pcm16_bytes, dtype=np.int16)
     audio_f32 = audio_i16.astype(np.float32) / 32768.0
-    segments, _ = _whisper_model.transcribe(audio_f32, language="en", beam_size=5)
-    return " ".join(seg.text.strip() for seg in segments).strip()
+
+    segments, _ = _whisper_model.transcribe(
+        audio_f32,
+        language="en",
+        beam_size=5,
+        # Whisper-family models are notorious for hallucinating stock
+        # phrases ("Thanks for watching!", "Subscribe...") on silent or
+        # near-silent audio -- trained heavily on captioned video, they'll
+        # confidently produce *something* rather than correctly saying
+        # nothing was said. vad_filter runs a lightweight Silero VAD pass
+        # internally and strips silence before transcription, which is the
+        # standard fix for this specific failure mode.
+        vad_filter=True,
+        vad_parameters=dict(min_silence_duration_ms=500),
+    )
+
+    kept = []
+    for seg in segments:
+        # Extra safety net on top of vad_filter: no_speech_prob is the
+        # model's own estimate that a segment contains no real speech.
+        # High no_speech_prob combined with low avg_logprob (i.e. the model
+        # wasn't confident either) is the classic signature of a
+        # hallucinated segment slipping through -- drop those rather than
+        # risk sending fabricated text to the LLM as if the user said it.
+        if getattr(seg, 'no_speech_prob', 0) > 0.6 and getattr(seg, 'avg_logprob', 0) < -0.5:
+            continue
+        text = seg.text.strip()
+        if text:
+            kept.append(text)
+
+    return " ".join(kept).strip()
 
 
 async def transcribe_final(pcm16_bytes: bytes) -> str:
@@ -167,15 +196,23 @@ class TranscriptionSession:
             return {"type": "partial", "text": self._full_text(partial.get("partial", ""))}
 
     async def finalize(self) -> dict:
-        # Vosk's own final segment -- always computed, used as the
-        # fallback if the final-pass model isn't available or fails.
+        # Vosk's own final segment -- always computed, used both as the
+        # fallback if the final-pass model isn't available/fails, AND as a
+        # sanity gate before even attempting the whisper pass (see below).
         result = json.loads(self.recognizer.FinalResult())
         trailing_text = result.get("text", "")
         if trailing_text:
             self._finalized_segments.append(trailing_text)
         vosk_text = self._full_text()
 
-        if final_pass_ready():
+        # If Vosk heard nothing at all, this utterance was very likely a
+        # false VAD trigger (background noise, a bump, etc.) rather than
+        # actual speech. Vosk doesn't share Whisper's tendency to
+        # hallucinate stock phrases on silence -- it just reports nothing
+        # heard -- so trust that signal and skip the (slower, more
+        # hallucination-prone) whisper pass entirely rather than risk it
+        # inventing text for audio nobody actually spoke over.
+        if final_pass_ready() and vosk_text:
             full_audio = b"".join(self._raw_audio_chunks)
             try:
                 whisper_text = await transcribe_final(full_audio)
