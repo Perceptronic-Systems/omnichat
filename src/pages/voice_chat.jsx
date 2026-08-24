@@ -120,7 +120,16 @@ function useAudioQueue() {
   return { enqueue, stopAll, analyserRef, isPlaying: () => playingRef.current || queueRef.current.length > 0 };
 }
 
+const getStyle = (property) => {
+  // Retrieves the value of a CSS variable from the root document
+  return getComputedStyle(document.documentElement).getPropertyValue(`--${property}`).trim();
+};
+
 function AudioVisualizer({ analyserRef }) {
+  const primaryColor = getStyle('viz-primary') || '#00f0ff';
+  const secondaryColor = getStyle('viz-secondary') || '#0096ff';
+  const glowColor = getStyle('viz-glow') || primaryColor;
+  
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -129,7 +138,6 @@ function AudioVisualizer({ analyserRef }) {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    // Dynamically resize canvas to fill its parent element
     const handleResize = () => {
       const parent = canvas.parentElement;
       if (parent) {
@@ -153,7 +161,6 @@ function AudioVisualizer({ analyserRef }) {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Extract frequency data and isolate active voice frequencies (~80Hz - 4500Hz)
       let frequencyData = new Uint8Array(0);
       let audioLevel = 0;
 
@@ -162,24 +169,26 @@ function AudioVisualizer({ analyserRef }) {
         const fullData = new Uint8Array(bufferLength);
         analyserRef.current.getByteFrequencyData(fullData);
 
-        // Slice upper silent spectrum, keeping the lower active voice range
         const activeBinCount = Math.floor(bufferLength * 0.35); 
         frequencyData = fullData.slice(0, activeBinCount);
 
         const sum = frequencyData.reduce((acc, val) => acc + val, 0);
-        audioLevel = sum / (frequencyData.length * 255); // Normalized 0.0 to 1.0
+        audioLevel = sum / (frequencyData.length * 255);
       }
 
-      rotationAngle += 0.01 + audioLevel * 0.03; // Dynamic rotation based on audio volume
+      rotationAngle += 0.01 + audioLevel * 0.03;
 
       // 1. Glowing Core Orb
       ctx.save();
+      // Use globalAlpha to handle the dynamic opacity without breaking hex strings
+      ctx.globalAlpha = 0.8 + audioLevel * 0.2; 
       ctx.shadowBlur = 15 + audioLevel * 25;
-      ctx.shadowColor = '#00f0ff';
+      ctx.shadowColor = glowColor;
       
       const gradient = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, baseRadius);
-      gradient.addColorStop(0, `rgba(0, 240, 255, ${0.8 + audioLevel * 0.2})`);
-      gradient.addColorStop(0.5, `rgba(0, 150, 255, ${0.3 + audioLevel * 0.3})`);
+      // Fixed: Removed the dynamic rgba() string construction that caused DOMException
+      gradient.addColorStop(0, primaryColor); 
+      gradient.addColorStop(0.5, secondaryColor);
       gradient.addColorStop(1, 'rgba(0, 20, 40, 0)');
 
       ctx.beginPath();
@@ -188,15 +197,15 @@ function AudioVisualizer({ analyserRef }) {
       ctx.fill();
       ctx.restore();
 
-      // 2. Rotating Arc Rings (Jarvis HUD circles)
+      // 2. Rotating Arc Rings
       const drawArcRing = (radius, speedMultiplier, arcs) => {
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(rotationAngle * speedMultiplier);
-        ctx.strokeStyle = '#00f0ff';
+        ctx.strokeStyle = primaryColor;
         ctx.lineWidth = 2;
         ctx.shadowBlur = 8;
-        ctx.shadowColor = '#00f0ff';
+        ctx.shadowColor = primaryColor;
 
         arcs.forEach(([startAngle, length]) => {
           ctx.beginPath();
@@ -219,13 +228,9 @@ function AudioVisualizer({ analyserRef }) {
       
       for (let i = 0; i < numBars; i++) {
         const angle = (i / numBars) * Math.PI * 2;
-        
-        // Map bar across sliced voice data
         const dataIndex = Math.floor((i / numBars) * frequencyData.length);
         const rawAudio = frequencyData[dataIndex] || 0;
-        
         const normalizedAudio = rawAudio / 255;
-        // Idle ambient breathing animation when quiet
         const idleWave = (Math.sin(Date.now() * 0.004 + i * 0.2) + 1) * 0.15; 
         const barHeight = 4 + (normalizedAudio * maxBarHeight) + (idleWave * maxBarHeight * 0.3);
 
@@ -234,15 +239,19 @@ function AudioVisualizer({ analyserRef }) {
         const x2 = Math.cos(angle) * (equalizerRadius + barHeight);
         const y2 = Math.sin(angle) * (equalizerRadius + barHeight);
 
-        ctx.strokeStyle = `rgba(0, 240, 255, ${0.4 + normalizedAudio * 0.6})`;
+        // Use globalAlpha for the fade effect on bars to maintain compatibility with hex colors
+        ctx.save();
+        ctx.globalAlpha = 0.4 + normalizedAudio * 0.6;
+        ctx.strokeStyle = secondaryColor;
         ctx.lineWidth = 3;
         ctx.shadowBlur = normalizedAudio > 0.1 ? 10 : 2;
-        ctx.shadowColor = '#00f0ff';
+        ctx.shadowColor = secondaryColor;
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
+        ctx.restore();
       }
       ctx.restore();
 
@@ -255,7 +264,7 @@ function AudioVisualizer({ analyserRef }) {
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
     };
-  }, [analyserRef]);
+  }, [analyserRef, primaryColor, secondaryColor, glowColor]);
 
   return <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />;
 }

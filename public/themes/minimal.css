@@ -167,3 +167,9 @@ tbody tr:hover { background-color: var(--bg-elevated); }
 .checkbox:checked {
   background-color: #24a1c0;
 }
+
+:root {
+  --viz-primary: #00d5ff;
+  --viz-secondary: #2283e3;
+  --viz-glow: #00d5ff;
+}

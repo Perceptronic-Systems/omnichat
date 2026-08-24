@@ -12,18 +12,23 @@
 // int16 bytes, not float32) and keeps the UI thread free.
 //
 // Also does simple energy-based voice activity detection (VAD) for
-// always-listening mode: posts {type:'vad', speaking:true/false} events
-// when speech starts, and again after a hangover period of sustained
-// quiet (so brief pauses mid-sentence don't get treated as the end of the
-// utterance). This is deliberately simple -- no ML model, just an RMS
-// energy threshold -- and won't distinguish real speech from any other
-// sustained loud sound. Good enough as a first pass; a proper VAD model
-// would be the upgrade path if false triggers turn out to be a problem.
+// always-listening mode: posts {type:'vad', speaking:true/false} events.
+// Both directions are debounced against brief transients -- speech-start
+// requires sustained energy above threshold for VAD_MIN_SPEECH_MS (so a
+// cough or click doesn't trigger a full interrupt), and speech-end
+// requires sustained quiet for VAD_HANGOVER_MS (so a brief pause
+// mid-sentence doesn't get treated as the end of the utterance). This is
+// deliberately simple -- no ML model, just an RMS energy threshold -- and
+// won't distinguish real speech from any other sustained loud sound. Good
+// enough as a first pass; a proper VAD model would be the upgrade path if
+// false triggers turn out to still be a problem (e.g. sustained background
+// noise like a fan or TV, which duration-debouncing alone won't filter).
 
 const TARGET_SAMPLE_RATE = 16000;
 const CHUNK_SIZE = 4096; // samples at TARGET_SAMPLE_RATE per message (~256ms)
 
 const VAD_THRESHOLD = 0.015;       // RMS energy above this counts as "speech"
+const VAD_MIN_SPEECH_MS = 200;     // sustained energy for this long -> speech-start (debounces brief noise blips)
 const VAD_HANGOVER_MS = 700;       // sustained quiet for this long -> speech-end
 
 class DownsamplingProcessor extends AudioWorkletProcessor {
@@ -37,6 +42,7 @@ class DownsamplingProcessor extends AudioWorkletProcessor {
 
     this._vadEnabled = false;
     this._speaking = false;
+    this._maybeSpeakingSinceMs = null; // candidate speech-start, not yet confirmed
     this._quietSinceMs = null;
     this._elapsedMs = 0;
 
@@ -62,15 +68,30 @@ class DownsamplingProcessor extends AudioWorkletProcessor {
     if (rms >= VAD_THRESHOLD) {
       this._quietSinceMs = null;
       if (!this._speaking) {
-        this._speaking = true;
-        this.port.postMessage({ type: 'vad', speaking: true });
+        // Don't declare speech on a single instant above threshold -- a
+        // click, cough, or chair creak crosses this just as easily as real
+        // speech does. Require it to actually be sustained first, same
+        // reasoning as the hangover below but on the start side instead of
+        // the end side.
+        if (this._maybeSpeakingSinceMs === null) this._maybeSpeakingSinceMs = this._elapsedMs;
+        if (this._elapsedMs - this._maybeSpeakingSinceMs >= VAD_MIN_SPEECH_MS) {
+          this._speaking = true;
+          this._maybeSpeakingSinceMs = null;
+          this.port.postMessage({ type: 'vad', speaking: true });
+        }
       }
-    } else if (this._speaking) {
-      if (this._quietSinceMs === null) this._quietSinceMs = this._elapsedMs;
-      if (this._elapsedMs - this._quietSinceMs >= VAD_HANGOVER_MS) {
-        this._speaking = false;
-        this._quietSinceMs = null;
-        this.port.postMessage({ type: 'vad', speaking: false });
+    } else {
+      // Any dip back below threshold means whatever was building toward a
+      // confirmed speech-start wasn't sustained -- reset the candidate
+      // timer so a fresh run of real speech has to earn it from scratch.
+      this._maybeSpeakingSinceMs = null;
+      if (this._speaking) {
+        if (this._quietSinceMs === null) this._quietSinceMs = this._elapsedMs;
+        if (this._elapsedMs - this._quietSinceMs >= VAD_HANGOVER_MS) {
+          this._speaking = false;
+          this._quietSinceMs = null;
+          this.port.postMessage({ type: 'vad', speaking: false });
+        }
       }
     }
   }

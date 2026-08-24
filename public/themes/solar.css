@@ -395,3 +395,9 @@ td button[title="Delete"]:hover {
 .checkbox:checked {
   background-color: #ddb916;
 }
+
+:root {
+  --viz-primary: #eeff00;
+  --viz-secondary: #e38c22;
+  --viz-glow: #ffdd00;
+}
