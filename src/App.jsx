@@ -124,7 +124,7 @@ export default function App() {
     return;
   }
 
-  const validPages = ["chat", "voice", "files", "schedule", "tools"];
+  const validPages = ["chat", "voice_chat", "files", "schedule", "tools"];
     if (validPages.includes(item)) {
       setPage(item);
       return;
