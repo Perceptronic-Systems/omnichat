@@ -4,10 +4,10 @@ import ollama
 import tomllib
 import os
 import io
+import asyncio
 from pypdf import PdfReader
 from typing import List, AsyncGenerator, Dict, Any
 from datetime import datetime
-from fastmcp import Context
 
 import mcp_server as mcp
 
@@ -96,14 +96,13 @@ print(f"Ollama Server API: {api}")
 
 
 class llm():
-    def __init__(self, name: str, model: str = llm_model, max_messages: int = 16):
+    def __init__(self, name: str, session_id=None, model: str = llm_model, max_messages: int = 16):
         self.model = model
         self.name = name
+        self.session_id = session_id
         self.prompt = generate_prompt(False)
         self.max_messages = max_messages
         self.status = 'idle'
-
-        self.id = None
 
         self.ollama_messages = [{"role": "system", "content": self.prompt}]
 
@@ -235,12 +234,22 @@ class llm():
                 tool_args = tool_call.function.arguments
                 print(f"    [OLLAMA TOOL_CALL] {tool_name}({tool_args})")
 
+                # Set immediately before the call, from OUR OWN record of
+                # which session this request belongs to -- never from
+                # anything the model supplied. mcp_server.execute_bash()
+                # reads this to find the right sandbox; tools that don't
+                # need it just ignore it.
+                mcp.current_session_id.set(str(self.session_id))
+
                 try:
-                    if tool_name == "execute_bash":
-                        ctx = Context(session_id=str(self.id))
-                        tool_output = available_tools[tool_name](ctx=ctx, **tool_args)
-                    else:
-                        tool_output = available_tools[tool_name](**tool_args)
+                    # Tool implementations are synchronous and can block
+                    # for real time (execute_bash up to its timeout,
+                    # search_web on network I/O) -- running them directly
+                    # here would block this whole process's event loop,
+                    # freezing every other concurrent user's request for
+                    # as long as this one tool call takes. to_thread keeps
+                    # this session's wait to itself.
+                    tool_output = await asyncio.to_thread(available_tools[tool_name], **tool_args)
                 except Exception as e:
                     tool_output = f"Error executing tool: {e}"
                     print(f'Error executing tool "{tool_name}": {e}')

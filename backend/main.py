@@ -76,16 +76,16 @@ def get_voice_status():
     }
 
 @app.get("/files/list")
-def list_container_files(path: str = "/"):
-    result = fm_list_directory(path)
+def list_container_files(session_id: int, path: str = "/"):
+    result = fm_list_directory(str(session_id), path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
 
 
 @app.get("/files/read")
-def read_container_file(path: str):
-    data, meta = fm_read_file(path)
+def read_container_file(session_id: int, path: str):
+    data, meta = fm_read_file(str(session_id), path)
     if data is None:
         return JSONResponse(status_code=404, content=meta)
     try:
@@ -96,8 +96,8 @@ def read_container_file(path: str):
 
 
 @app.get("/files/download")
-def download_container_file(path: str):
-    data, meta = fm_read_file(path, max_bytes=200_000_000)
+def download_container_file(session_id: int, path: str):
+    data, meta = fm_read_file(str(session_id), path, max_bytes=200_000_000)
     if data is None:
         return JSONResponse(status_code=404, content=meta)
     return Response(
@@ -108,26 +108,26 @@ def download_container_file(path: str):
 
 
 @app.post("/files/upload")
-async def upload_container_file(path: str = Form(...), file: UploadFile = File(...)):
+async def upload_container_file(session_id: int = Form(...), path: str = Form(...), file: UploadFile = File(...)):
     content = await file.read()
     target = path.rstrip("/") + "/" + file.filename
-    ok = fm_write_file(target, content)
+    ok = fm_write_file(str(session_id), target, content)
     if not ok:
         return JSONResponse(status_code=500, content={"error": "Upload failed"})
     return {"success": True, "path": target}
 
 
 @app.delete("/files/delete")
-def delete_container_file(path: str):
-    result = fm_delete_path(path)
+def delete_container_file(session_id: int, path: str):
+    result = fm_delete_path(str(session_id), path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
 
 
 @app.post("/files/mkdir")
-def make_container_directory(path: str = Form(...)):
-    result = fm_make_directory(path)
+def make_container_directory(session_id: int = Form(...), path: str = Form(...)):
+    result = fm_make_directory(str(session_id), path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
@@ -354,8 +354,7 @@ async def generate(
                 valid_files.append((file.filename, content))
 
     if not sessions.get(id):
-        sessions[id] = llm('Montag')
-        model.id = id
+        sessions[id] = llm('Omnichat', session_id=id)
 
     model = sessions[id]
 

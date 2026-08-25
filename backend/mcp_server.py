@@ -5,19 +5,31 @@ import os
 import tarfile
 import time
 import threading
-from fastmcp import FastMCP, Context
+import contextvars
+from fastmcp import FastMCP
 from sympy import sympify
 import docker
 from web_search import search_searxng
 
 mcp = FastMCP("my local tools")
 
-docker_client = docker.from_env()
+_docker_client = None
+
+
+def _get_docker_client():
+    global _docker_client
+    if _docker_client is None:
+        _docker_client = docker.from_env()
+    return _docker_client
+
+
+current_session_id: contextvars.ContextVar = contextvars.ContextVar("current_session_id", default=None)
 
 # Security & Container Configuration
 SANDBOX_IMAGE = "ubuntu:latest"
 IDLE_TIMEOUT_SECONDS = 1800  # 30 minutes of inactivity before auto-destruction
 CLEANUP_INTERVAL_SECONDS = 60 # Check for idle containers every minute
+SANDBOX_PIDS_LIMIT = 128      # cap process count -- fork-bomb protection
 
 # Memory store for session containers: { session_id: {"container": container_obj, "last_accessed": timestamp} }
 active_sandboxes = {}
@@ -44,8 +56,13 @@ def get_or_create_session_sandbox(session_id: str):
                 # Clean up stale reference if container died
                 del active_sandboxes[session_id]
 
-        # Spin up a long-running, hardened container for this session
-        container = docker_client.containers.run(
+        # Spin up a long-running, hardened container for this session.
+        # Everything writable is tmpfs (RAM-backed) -- nothing here ever
+        # touches host disk, and it's all gone the moment the container
+        # stops (idle timeout, session end, or process exit). "Persists
+        # throughout your session" below means exactly that and no more:
+        # not across sessions, not to disk.
+        container = _get_docker_client().containers.run(
             image=SANDBOX_IMAGE,
             command="tail -f /dev/null",  # Keeps container alive for session duration
             detach=True,
@@ -55,9 +72,14 @@ def get_or_create_session_sandbox(session_id: str):
             working_dir="/workspace",
             mem_limit="512m",
             nano_cpus=1000000000,
+            pids_limit=SANDBOX_PIDS_LIMIT,
             cap_drop=["ALL"],
             security_opt=["no-new-privileges:true"],
-            user="root", # Root within isolated namespace for package/tool setup
+            # Non-root: network access is already fully disabled above, so
+            # there's no apt/pip install capability lost by dropping root --
+            # nothing here could reach a package registry either way. Root
+            # only would have bought a bigger blast radius for zero benefit.
+            user="1000:1000",
         )
 
         active_sandboxes[session_id] = {
@@ -193,19 +215,23 @@ def fm_make_directory(session_id: str, path: str):
 
 
 @mcp.tool()
-def execute_bash(command: str, ctx: Context, timeout: int = 30) -> str:
+def execute_bash(command: str, timeout: int = 30) -> str:
     """
-    Executes a bash terminal command inside a session-scoped, isolated Linux environment.
-    Files saved in /workspace or /tmp persist throughout your active chat session.
+    Executes a bash terminal command inside your own private, isolated Linux
+    environment for this conversation. Network access is disabled inside
+    this environment -- use the search_web tool for anything internet-
+    related, since this shell cannot reach the internet at all. Files saved
+    to /workspace or /tmp persist only for the duration of this chat
+    session (held in memory, never written to disk) and are permanently
+    destroyed when the session ends or goes idle.
 
     Args:
         command: The bash command string to execute in the terminal.
         timeout: Max seconds to allow command execution before cancellation (default 30).
     """
-    session_id = ctx.session_id
-
-    if not session_id:
-        raise RuntimeError("No MCP session ID available")
+    session_id = current_session_id.get()
+    if session_id is None:
+        return "Error: no active session context for this tool call."
 
     container = get_or_create_session_sandbox(session_id)
     wrapped = f"timeout -k 2 {int(timeout)} bash -c {repr(command)}"
