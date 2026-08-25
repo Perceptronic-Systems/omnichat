@@ -5,7 +5,7 @@ import os
 import tarfile
 import time
 import threading
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from sympy import sympify
 import docker
 from web_search import search_searxng
@@ -193,16 +193,20 @@ def fm_make_directory(session_id: str, path: str):
 
 
 @mcp.tool()
-def execute_bash(command: str, session_id: str = "default", timeout: int = 30) -> str:
+def execute_bash(command: str, ctx: Context, timeout: int = 30) -> str:
     """
     Executes a bash terminal command inside a session-scoped, isolated Linux environment.
     Files saved in /workspace or /tmp persist throughout your active chat session.
 
     Args:
         command: The bash command string to execute in the terminal.
-        session_id: Active session identifier passed by the system.
         timeout: Max seconds to allow command execution before cancellation (default 30).
     """
+    session_id = ctx.session_id
+
+    if not session_id:
+        raise RuntimeError("No MCP session ID available")
+
     container = get_or_create_session_sandbox(session_id)
     wrapped = f"timeout -k 2 {int(timeout)} bash -c {repr(command)}"
     exec_result = container.exec_run(f"bash -c {repr(wrapped)}", workdir="/workspace")

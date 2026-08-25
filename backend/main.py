@@ -13,7 +13,7 @@ import uvicorn
 import atexit
 from fastapi.responses import StreamingResponse, JSONResponse
 from mcp_server import (
-    cleanup_container,
+    cleanup_all_containers,
     fm_list_directory,
     fm_read_file,
     fm_write_file,
@@ -23,7 +23,7 @@ from mcp_server import (
 import speech_to_text
 import text_to_speech
 
-atexit.register(cleanup_container)
+atexit.register(cleanup_all_containers)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
