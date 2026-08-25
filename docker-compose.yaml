@@ -12,6 +12,7 @@ services:
     networks:
       - omnichat_net
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - /etc/omnichat:/etc/omnichat
       - ./models/vosk-model-small-en-us-0.15:/models/vosk-model-small-en-us-0.15:ro
       - huggingface_cache:/root/.cache/huggingface
