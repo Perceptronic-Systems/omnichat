@@ -1,79 +1,139 @@
 #!/usr/bin/env python3
 
 import io
+import os
 import tarfile
+import time
+import threading
 from fastmcp import FastMCP
 from sympy import sympify
-from typing import List, Dict, Any
-import requests
-import asyncio
-from ddgs import DDGS
-import os
-import difflib
-import requests
-from web_search import _searxng_available, search_searxng
 import docker
+from web_search import search_searxng
 
-mcp = FastMCP('my local tools')
+mcp = FastMCP("my local tools")
 
-docker_client = None
-sandbox_container = None
+docker_client = docker.from_env()
 
-knowledge_base_folder = "/etc/omnichat_knowledge_base"
+# Security & Container Configuration
+SANDBOX_IMAGE = "ubuntu:latest"
+IDLE_TIMEOUT_SECONDS = 1800  # 30 minutes of inactivity before auto-destruction
+CLEANUP_INTERVAL_SECONDS = 60 # Check for idle containers every minute
 
-def get_sandbox():
-    global docker_client, sandbox_container
-    if sandbox_container is None:
-        docker_client = docker.from_env()
-        # Add 'volumes' to the run configuration
-        sandbox_container = docker_client.containers.run(
-            image="ubuntu:latest",
-            command="tail -f /dev/null",
+# Memory store for session containers: { session_id: {"container": container_obj, "last_accessed": timestamp} }
+active_sandboxes = {}
+sandbox_lock = threading.Lock()
+
+
+def get_or_create_session_sandbox(session_id: str):
+    """
+    Returns an existing container for the given session_id or spins up a new 
+    hardened, persistent session container if one doesn't exist.
+    """
+    with sandbox_lock:
+        now = time.time()
+        
+        if session_id in active_sandboxes:
+            entry = active_sandboxes[session_id]
+            try:
+                # Ping container state to ensure it hasn't crashed
+                entry["container"].reload()
+                if entry["container"].status == "running":
+                    entry["last_accessed"] = now
+                    return entry["container"]
+            except Exception:
+                # Clean up stale reference if container died
+                del active_sandboxes[session_id]
+
+        # Spin up a long-running, hardened container for this session
+        container = docker_client.containers.run(
+            image=SANDBOX_IMAGE,
+            command="tail -f /dev/null",  # Keeps container alive for session duration
             detach=True,
             auto_remove=True,
-            network_mode="bridge",
-            # This binds your host path to the same path inside the container
-            volumes={
-                knowledge_base_folder: {
-                    'bind': knowledge_base_folder,
-                    'mode': 'rw'
-                }
-            }
+            network_mode="none",
+            tmpfs={'/tmp': 'rw,noexec,nosuid,size=128m', '/workspace': 'rw,exec,nosuid,size=512m'},
+            working_dir="/workspace",
+            mem_limit="512m",
+            nano_cpus=1000000000,
+            cap_drop=["ALL"],
+            security_opt=["no-new-privileges:true"],
+            user="root", # Root within isolated namespace for package/tool setup
         )
-    return sandbox_container
 
-def cleanup_container():
-    global sandbox_container
-    if sandbox_container:
-        try:
-            sandbox_container.stop(timeout=1)
-        except Exception:
-            pass
+        active_sandboxes[session_id] = {
+            "container": container,
+            "last_accessed": now
+        }
+        return container
 
-# ─── File manager (sandbox container) helpers ──────────────────────────────
 
-def fm_list_directory(path: str = "/"):
-    container = get_sandbox()
-    if not path.startswith("/"):
-        path = "/" + path
+def start_idle_janitor():
+    """Background thread that destroys containers unused past the IDLE_TIMEOUT."""
+    def janitor_loop():
+        while True:
+            time.sleep(CLEANUP_INTERVAL_SECONDS)
+            now = time.time()
+            expired_sessions = []
+
+            with sandbox_lock:
+                for session_id, data in active_sandboxes.items():
+                    if now - data["last_accessed"] > IDLE_TIMEOUT_SECONDS:
+                        expired_sessions.append((session_id, data["container"]))
+
+            for session_id, container in expired_sessions:
+                try:
+                    container.stop(timeout=2)
+                    print(f"[JANITOR] Evicted idle sandbox for session {session_id}")
+                except Exception as e:
+                    print(f"[JANITOR ERROR] Failed stopping session {session_id}: {e}")
+                
+                with sandbox_lock:
+                    active_sandboxes.pop(session_id, None)
+
+    thread = threading.Thread(target=janitor_loop, daemon=True)
+    thread.start()
+
+# Start background cleanup loop at startup
+start_idle_janitor()
+
+
+def cleanup_all_containers():
+    """App tear-down hook to kill remaining containers on server shutdown."""
+    with sandbox_lock:
+        for session_id, data in active_sandboxes.items():
+            try:
+                data["container"].stop(timeout=1)
+            except Exception:
+                pass
+        active_sandboxes.clear()
+
+
+# ─── File Manager (Session-Scoped Helpers) ───────────────────────────────────
+
+
+def fm_list_directory(session_id: str, path: str = "/workspace"):
+    container = get_or_create_session_sandbox(session_id)
     exit_code, output = container.exec_run(["ls", "-1AF", "--", path])
     if exit_code != 0:
-        return {"error": output.decode("utf-8", errors="replace").strip() or f"Could not list '{path}'"}
+        return {"error": output.decode("utf-8", errors="replace").strip()}
+
     entries = []
     for name in output.decode("utf-8", errors="replace").splitlines():
         if not name:
             continue
         is_dir = name.endswith("/")
-        entries.append({"name": name[:-1] if is_dir else name, "type": "directory" if is_dir else "file", "size": 0, "mtime": 0})
+        entries.append({
+            "name": name[:-1] if is_dir else name,
+            "type": "directory" if is_dir else "file",
+            "size": 0,
+            "mtime": 0
+        })
     entries.sort(key=lambda e: (e["type"] != "directory", e["name"].lower()))
     return {"path": path, "entries": entries}
 
 
-def fm_read_file(path: str, max_bytes: int = 200_000):
-    """Read a file's bytes from the sandbox container via a tar archive."""
-    container = get_sandbox()
-    if not path.startswith("/"):
-        path = "/" + path
+def fm_read_file(session_id: str, path: str, max_bytes: int = 200_000):
+    container = get_or_create_session_sandbox(session_id)
     try:
         stream, stat_info = container.get_archive(path)
     except docker.errors.NotFound:
@@ -95,12 +155,9 @@ def fm_read_file(path: str, max_bytes: int = 200_000):
     return data, {"name": os.path.basename(path.rstrip("/")), "size": stat_info.get("size"), "truncated": truncated}
 
 
-def fm_write_file(path: str, content: bytes):
-    """Write bytes to a file inside the sandbox container by uploading a tar archive."""
-    container = get_sandbox()
-    if not path.startswith("/"):
-        path = "/" + path
-    directory = os.path.dirname(path) or "/"
+def fm_write_file(session_id: str, path: str, content: bytes):
+    container = get_or_create_session_sandbox(session_id)
+    directory = os.path.dirname(path) or "/workspace"
     filename = os.path.basename(path)
 
     tar_stream = io.BytesIO()
@@ -114,91 +171,67 @@ def fm_write_file(path: str, content: bytes):
     return container.put_archive(directory, tar_stream.getvalue())
 
 
-def fm_delete_path(path: str):
-    """Delete a file or directory inside the sandbox container."""
-    container = get_sandbox()
-    if not path.startswith("/"):
-        path = "/" + path
-    if path.strip("/") == "":
-        return {"error": "Refusing to delete root directory"}
+def fm_delete_path(session_id: str, path: str):
+    container = get_or_create_session_sandbox(session_id)
+    if path.strip("/") in ["", "workspace"]:
+        return {"error": "Refusing to delete root or workspace directory"}
     exit_code, output = container.exec_run(["rm", "-rf", path])
     if exit_code != 0:
         return {"error": output.decode("utf-8", errors="replace").strip()}
     return {"success": True}
 
 
-def fm_make_directory(path: str):
-    """Create a directory (and parents) inside the sandbox container."""
-    container = get_sandbox()
-    if not path.startswith("/"):
-        path = "/" + path
+def fm_make_directory(session_id: str, path: str):
+    container = get_or_create_session_sandbox(session_id)
     exit_code, output = container.exec_run(["mkdir", "-p", path])
     if exit_code != 0:
         return {"error": output.decode("utf-8", errors="replace").strip()}
     return {"success": True}
 
-knowledge_base_folder = "/etc/omnichat_knowledge_base"
 
-def get_files(path):
-    if path == "/":
-        path = ""
-    paths = []
-    for filename in os.listdir(f"{knowledge_base_folder}{path}"):
-        file_path = f"{path}/{filename}"
-        paths.append(file_path)
-    return paths
+# ─── Tools Exposed to AI Agent ──────────────────────────────────────────────
 
 
 @mcp.tool()
-def execute_bash(command: str, timeout: int = 30) -> str:
+def execute_bash(command: str, session_id: str = "default", timeout: int = 30) -> str:
     """
-    Executes a bash terminal command inside an isolated, session-scoped Linux environment and returns STDOUT/STDERR.
-    Use this to run terminal commands, inspect system files, install tools via apt/pip, or run scripts.
+    Executes a bash terminal command inside a session-scoped, isolated Linux environment.
+    Files saved in /workspace or /tmp persist throughout your active chat session.
 
     Args:
         command: The bash command string to execute in the terminal.
-        timeout: Max seconds to allow the command to run before it is killed (default 30).
+        session_id: Active session identifier passed by the system.
+        timeout: Max seconds to allow command execution before cancellation (default 30).
     """
-    container = get_sandbox()
-    # Wrap the command with `timeout` so a hung/long-running process gets killed
-    # inside the container itself, rather than blocking the exec_run call forever.
+    container = get_or_create_session_sandbox(session_id)
     wrapped = f"timeout -k 2 {int(timeout)} bash -c {repr(command)}"
-    exec_result = container.exec_run(f"bash -c {repr(wrapped)}")
+    exec_result = container.exec_run(f"bash -c {repr(wrapped)}", workdir="/workspace")
     output = exec_result.output.decode("utf-8", errors="replace")
 
     if exec_result.exit_code == 124:
         return f"[Command timed out after {timeout}s]\n{output}"
+        
     return output if output.strip() else "Command executed with no output."
 
 
 @mcp.tool()
 def search_web(query: str, limit: int = 8) -> list[dict]:
-    """
-    Search the web using SearXNG to get up-to-date information on a topic.
-
-    Args:
-        query: The search terms or question to look up.
-        limit: The maximum number of search results to return (default 5, max 10).
-    Returns:
-        A list of dicts with 'title', 'url', and 'snippet' keys drawn from
-        the actual page content of each result.
-    """
+    """Search the web using SearXNG to get up-to-date information on a topic."""
     return search_searxng(query, limit)
 
 
 @mcp.tool()
 def evaluate(equation: str) -> str:
-    "Calculates the resulting value of a mathematical equation."
+    """Calculates the resulting value of a mathematical equation."""
     result = sympify(equation).evalf()
-    return result
+    return str(result)
 
 
 async def initialize_tools():
     tools_list = []
     available_tools = {}
-    
     mcp_tools = await mcp.list_tools()
-        
+
     for tool in mcp_tools:
         tools_list.append({
             'type': 'function',
@@ -210,8 +243,6 @@ async def initialize_tools():
         })
         available_tools[tool.name] = tool.fn
 
-    print("Tools list:")
-    print(tools_list)
     return tools_list, available_tools
 
 
