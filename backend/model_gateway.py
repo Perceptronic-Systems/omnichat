@@ -7,6 +7,7 @@ import io
 from pypdf import PdfReader
 from typing import List, AsyncGenerator, Dict, Any
 from datetime import datetime
+from fastmcp import Context
 
 import mcp_server as mcp
 
@@ -101,6 +102,8 @@ class llm():
         self.prompt = generate_prompt(False)
         self.max_messages = max_messages
         self.status = 'idle'
+
+        self.id = None
 
         self.ollama_messages = [{"role": "system", "content": self.prompt}]
 
@@ -233,7 +236,11 @@ class llm():
                 print(f"    [OLLAMA TOOL_CALL] {tool_name}({tool_args})")
 
                 try:
-                    tool_output = available_tools[tool_name](**tool_args)
+                    if tool_name == "execute_bash":
+                        ctx = Context(session_id=str(self.id))
+                        tool_output = available_tools[tool_name](ctx=ctx, **tool_args)
+                    else:
+                        tool_output = available_tools[tool_name](**tool_args)
                 except Exception as e:
                     tool_output = f"Error executing tool: {e}"
                     print(f'Error executing tool "{tool_name}": {e}')

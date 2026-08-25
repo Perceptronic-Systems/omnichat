@@ -354,7 +354,8 @@ async def generate(
                 valid_files.append((file.filename, content))
 
     if not sessions.get(id):
-        sessions[id] = llm('Omnichat')
+        sessions[id] = llm('Montag')
+        model.id = id
 
     model = sessions[id]
 
