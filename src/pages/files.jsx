@@ -43,7 +43,7 @@ function breadcrumbParts(path) {
   return path === "/" ? [] : path.split("/").filter(Boolean);
 }
 
-export default function Files({ apiBase }) {
+export default function Files({ apiBase, sessionId = 0 }) { 
   const [path, setPath] = useState("/");
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +52,7 @@ export default function Files({ apiBase }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const uploadInputRef = useRef(null);
 
+  // Declare browserMode at the top of the component scope so all callbacks can access it
   const browserMode = apiBase === "browser";
 
   const load = useCallback(async (targetPath) => {
@@ -59,7 +60,7 @@ export default function Files({ apiBase }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}files/list?path=${encodeURIComponent(targetPath)}`);
+      const res = await fetch(`${apiBase}files/list?session_id=${sessionId}&path=${encodeURIComponent(targetPath)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setEntries(data.entries || []);
@@ -69,7 +70,7 @@ export default function Files({ apiBase }) {
     } finally {
       setLoading(false);
     }
-  }, [apiBase, browserMode]);
+  }, [apiBase, browserMode, sessionId]);
 
   useEffect(() => { load(path); }, [path, load]);
 
@@ -79,7 +80,7 @@ export default function Files({ apiBase }) {
     setPreviewLoading(true);
     setPreview({ name: entry.name, path: fullPath });
     try {
-      const res = await fetch(`${apiBase}files/read?path=${encodeURIComponent(fullPath)}`);
+      const res = await fetch(`${apiBase}files/read?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setPreview({ name: entry.name, path: fullPath, ...data });
@@ -88,18 +89,18 @@ export default function Files({ apiBase }) {
     } finally {
       setPreviewLoading(false);
     }
-  }, [apiBase, path]);
+  }, [apiBase, path, sessionId]);
 
   const downloadEntry = useCallback((entry) => {
     const fullPath = joinPath(path, entry.name);
-    window.open(`${apiBase}files/download?path=${encodeURIComponent(fullPath)}`, "_blank");
-  }, [apiBase, path]);
+    window.open(`${apiBase}files/download?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`, "_blank");
+  }, [apiBase, path, sessionId]);
 
   const deleteEntry = useCallback(async (entry) => {
     const fullPath = joinPath(path, entry.name);
     if (!window.confirm(`Delete "${entry.name}"? This cannot be undone.`)) return;
     try {
-      const res = await fetch(`${apiBase}files/delete?path=${encodeURIComponent(fullPath)}`, { method: "DELETE" });
+      const res = await fetch(`${apiBase}files/delete?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`, { method: "DELETE" });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       load(path);
@@ -107,13 +108,14 @@ export default function Files({ apiBase }) {
     } catch (e) {
       alert(`Could not delete: ${e.message}`);
     }
-  }, [apiBase, path, load, preview]);
+  }, [apiBase, path, load, preview, sessionId]);
 
   const makeFolder = useCallback(async () => {
     const name = window.prompt("New folder name:");
     if (!name) return;
     try {
       const form = new FormData();
+      form.append("session_id", sessionId);
       form.append("path", joinPath(path, name));
       const res = await fetch(`${apiBase}files/mkdir`, { method: "POST", body: form });
       const data = await res.json();
@@ -122,13 +124,14 @@ export default function Files({ apiBase }) {
     } catch (e) {
       alert(`Could not create folder: ${e.message}`);
     }
-  }, [apiBase, path, load]);
+  }, [apiBase, path, load, sessionId]);
 
   const handleUpload = useCallback(async (e) => {
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
     for (const file of picked) {
       const form = new FormData();
+      form.append("session_id", sessionId);
       form.append("path", path);
       form.append("file", file);
       try {
@@ -140,7 +143,7 @@ export default function Files({ apiBase }) {
       }
     }
     load(path);
-  }, [apiBase, path, load]);
+  }, [apiBase, path, load, sessionId]);
 
   const crumbs = breadcrumbParts(path);
 
@@ -161,7 +164,7 @@ export default function Files({ apiBase }) {
         <div className="section file-manager-toolbar" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <button onClick={() => setPath("/")} title="Root"> </button>
           <button onClick={() => setPath(parentPath(path))} disabled={path === "/"} title="Up one level"> </button>
-          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>,
+          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
             <span style={{ cursor: "pointer" }} onClick={() => setPath("/")}>root</span>
             {crumbs.map((part, i) => {
               const crumbPath = "/" + crumbs.slice(0, i + 1).join("/");
