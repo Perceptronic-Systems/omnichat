@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import io
 import os
 import posixpath
 import shlex
-import tarfile
+import base64
 import time
 import threading
 import contextvars
@@ -187,42 +186,52 @@ def fm_list_directory(session_id: str, path: str = "/workspace"):
 def fm_read_file(session_id: str, path: str, max_bytes: int = 200_000):
     path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
-    try:
-        stream, stat_info = container.get_archive(path)
-    except docker.errors.NotFound:
+
+    exit_code, check_out = container.exec_run(
+        ["sh", "-c", f"test -d {shlex.quote(path)} && echo DIR || (test -f {shlex.quote(path)} && echo FILE || echo MISSING)"]
+    )
+    kind = check_out.decode("utf-8", errors="replace").strip()
+    if kind == "MISSING":
         return None, {"error": f"'{path}' not found"}
-    except Exception as e:
-        return None, {"error": str(e)}
+    if kind == "DIR":
+        return None, {"error": f"'{path}' is a directory"}
 
-    tar_bytes = io.BytesIO(b"".join(stream))
-    with tarfile.open(fileobj=tar_bytes) as tar:
-        member = tar.getmembers()[0]
-        if member.isdir():
-            return None, {"error": f"'{path}' is a directory"}
-        f = tar.extractfile(member)
-        data = f.read(max_bytes + 1) if f else b""
+    _, size_out = container.exec_run(["sh", "-c", f"wc -c < {shlex.quote(path)}"])
+    try:
+        size = int(size_out.decode("utf-8", errors="replace").strip())
+    except ValueError:
+        size = None
 
-    truncated = len(data) > max_bytes
+    _, data = container.exec_run(["cat", path])
+    truncated = size is not None and size > max_bytes
     if truncated:
         data = data[:max_bytes]
-    return data, {"name": os.path.basename(path.rstrip("/")), "size": stat_info.get("size"), "truncated": truncated}
+    return data, {"name": os.path.basename(path.rstrip("/")), "size": size, "truncated": truncated}
 
 
 def fm_write_file(session_id: str, path: str, content: bytes):
     path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     directory = os.path.dirname(path) or "/workspace"
-    filename = os.path.basename(path)
 
-    tar_stream = io.BytesIO()
-    with tarfile.open(fileobj=tar_stream, mode="w") as tar:
-        info = tarfile.TarInfo(name=filename)
-        info.size = len(content)
-        tar.addfile(info, io.BytesIO(content))
-    tar_stream.seek(0)
-
+    # Same reasoning as fm_read_file: put_archive() writes to the
+    # container's on-disk snapshot, which tmpfs-mounted paths aren't part
+    # of -- it can silently "succeed" without the file ever actually
+    # appearing anywhere the container (or execute_bash) can see. Piping
+    # base64 through a real shell process inside the container writes to
+    # the actual live tmpfs mount instead.
+    #
+    # NOTE: this embeds the entire base64-encoded content as a single
+    # shell argument, which is fine for typical text/config-sized uploads
+    # but will hit the OS's argument-length limit (ARG_MAX, commonly a few
+    # MB) for large files. Fine for a demo; would need chunking or a
+    # socket-based exec for arbitrarily large uploads.
     container.exec_run(["mkdir", "-p", directory])
-    return container.put_archive(directory, tar_stream.getvalue())
+    b64 = base64.b64encode(content).decode("ascii")
+    exit_code, output = container.exec_run(
+        ["sh", "-c", f"echo {shlex.quote(b64)} | base64 -d > {shlex.quote(path)}"]
+    )
+    return exit_code == 0
 
 
 def fm_delete_path(session_id: str, path: str):
