@@ -60,7 +60,7 @@ export default function App() {
         return <Tools toolCalls={toolCalls} />;
         break;
       case "files":
-        return <Files apiBase={apiBase} />;
+        return <Files apiBase={apiBase} sessionId={SESSION_ID} />;
       case "voice_chat":
         return <VoiceChat
           apiBase={apiBase}
