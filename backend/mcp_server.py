@@ -3,6 +3,7 @@
 import io
 import os
 import posixpath
+import shlex
 import tarfile
 import time
 import threading
@@ -267,8 +268,8 @@ def execute_bash(command: str, timeout: int = 30) -> str:
         return "Error: no active session context for this tool call."
 
     container = get_or_create_session_sandbox(session_id)
-    wrapped = f"timeout -k 2 {int(timeout)} bash -c {repr(command)}"
-    exec_result = container.exec_run(f"bash -c {repr(wrapped)}", workdir="/workspace")
+    wrapped = f"timeout -k 2 {int(timeout)} bash -c {shlex.quote(command)}"
+    exec_result = container.exec_run(["bash", "-c", wrapped], workdir="/workspace")
     output = exec_result.output.decode("utf-8", errors="replace")
 
     if exec_result.exit_code == 124:
