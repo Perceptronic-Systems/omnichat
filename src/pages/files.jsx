@@ -28,23 +28,30 @@ function fileIcon(entry) {
   return " "; /* nf-fa-file_o (default) */
 }
 
+const WORKSPACE_ROOT = "/workspace";
+
 function joinPath(base, name) {
   return base === "/" ? "/" + name : base.replace(/\/$/, "") + "/" + name;
 }
 
 function parentPath(path) {
-  if (path === "/" || path === "") return "/";
+  if (path === WORKSPACE_ROOT) return WORKSPACE_ROOT;
   const trimmed = path.replace(/\/$/, "");
   const idx = trimmed.lastIndexOf("/");
-  return idx <= 0 ? "/" : trimmed.slice(0, idx);
+  const parent = idx <= 0 ? "/" : trimmed.slice(0, idx);
+  // Never surface anything above the workspace root -- matches the
+  // backend's own confinement in mcp_server.py's _confine_to_workspace.
+  return parent.length < WORKSPACE_ROOT.length ? WORKSPACE_ROOT : parent;
 }
 
 function breadcrumbParts(path) {
-  return path === "/" ? [] : path.split("/").filter(Boolean);
+  if (path === WORKSPACE_ROOT) return [];
+  const rel = path.startsWith(WORKSPACE_ROOT + "/") ? path.slice(WORKSPACE_ROOT.length) : path;
+  return rel.split("/").filter(Boolean);
 }
 
 export default function Files({ apiBase, sessionId = 0 }) { 
-  const [path, setPath] = useState("/");
+  const [path, setPath] = useState(WORKSPACE_ROOT);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -162,12 +169,12 @@ export default function Files({ apiBase, sessionId = 0 }) {
     <div className="row" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div className="column" style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <div className="section file-manager-toolbar" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button onClick={() => setPath("/")} title="Root"> </button>
-          <button onClick={() => setPath(parentPath(path))} disabled={path === "/"} title="Up one level"> </button>
+          <button onClick={() => setPath(WORKSPACE_ROOT)} title="Root"> </button>
+          <button onClick={() => setPath(parentPath(path))} disabled={path === WORKSPACE_ROOT} title="Up one level"> </button>
           <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
-            <span style={{ cursor: "pointer" }} onClick={() => setPath("/")}>root</span>
+            <span style={{ cursor: "pointer" }} onClick={() => setPath(WORKSPACE_ROOT)}>root</span>
             {crumbs.map((part, i) => {
-              const crumbPath = "/" + crumbs.slice(0, i + 1).join("/");
+              const crumbPath = WORKSPACE_ROOT + "/" + crumbs.slice(0, i + 1).join("/");
               return (
                 <span key={crumbPath}>
                   {" / "}

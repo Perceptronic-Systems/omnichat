@@ -2,6 +2,7 @@
 
 import io
 import os
+import posixpath
 import tarfile
 import time
 import threading
@@ -14,6 +15,29 @@ from web_search import search_searxng
 mcp = FastMCP("my local tools")
 
 _docker_client = None
+
+WORKSPACE_ROOT = "/workspace"
+
+
+def _confine_to_workspace(path: str) -> str:
+    """Normalize a user-supplied path to stay within /workspace.
+
+    This is a UI-scoping guard for the file manager, NOT a hard security
+    boundary -- execute_bash already has full shell access to the rest of
+    the sandbox by design (it's a general-purpose terminal), and someone
+    with that could always work around this via bash anyway. The point
+    here is just keeping the dedicated file-browser endpoints focused on
+    the one directory that's actually meant to hold the user's own files,
+    rather than exposing the sandbox's OS internals through a UI that has
+    no reason to show them.
+    """
+    path = path or "/"
+    if not path.startswith("/"):
+        path = WORKSPACE_ROOT + "/" + path
+    normalized = posixpath.normpath(path)
+    if normalized == WORKSPACE_ROOT or normalized.startswith(WORKSPACE_ROOT + "/"):
+        return normalized
+    return WORKSPACE_ROOT
 
 
 def _get_docker_client():
@@ -68,7 +92,11 @@ def get_or_create_session_sandbox(session_id: str):
             detach=True,
             auto_remove=True,
             network_mode="none",
-            tmpfs={'/tmp': 'rw,noexec,nosuid,size=128m', '/workspace': 'rw,exec,nosuid,size=512m'},
+            read_only=True,  # base OS layer is immutable; only the tmpfs mounts below are writable
+            tmpfs={
+                '/tmp': 'rw,noexec,nosuid,size=128m,uid=1000,gid=1000,mode=1770',
+                '/workspace': 'rw,exec,nosuid,size=512m,uid=1000,gid=1000,mode=1770',
+            },
             working_dir="/workspace",
             mem_limit="512m",
             nano_cpus=1000000000,
@@ -134,6 +162,7 @@ def cleanup_all_containers():
 
 
 def fm_list_directory(session_id: str, path: str = "/workspace"):
+    path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     exit_code, output = container.exec_run(["ls", "-1AF", "--", path])
     if exit_code != 0:
@@ -155,6 +184,7 @@ def fm_list_directory(session_id: str, path: str = "/workspace"):
 
 
 def fm_read_file(session_id: str, path: str, max_bytes: int = 200_000):
+    path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     try:
         stream, stat_info = container.get_archive(path)
@@ -178,6 +208,7 @@ def fm_read_file(session_id: str, path: str, max_bytes: int = 200_000):
 
 
 def fm_write_file(session_id: str, path: str, content: bytes):
+    path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     directory = os.path.dirname(path) or "/workspace"
     filename = os.path.basename(path)
@@ -194,6 +225,7 @@ def fm_write_file(session_id: str, path: str, content: bytes):
 
 
 def fm_delete_path(session_id: str, path: str):
+    path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     if path.strip("/") in ["", "workspace"]:
         return {"error": "Refusing to delete root or workspace directory"}
@@ -204,6 +236,7 @@ def fm_delete_path(session_id: str, path: str):
 
 
 def fm_make_directory(session_id: str, path: str):
+    path = _confine_to_workspace(path)
     container = get_or_create_session_sandbox(session_id)
     exit_code, output = container.exec_run(["mkdir", "-p", path])
     if exit_code != 0:
