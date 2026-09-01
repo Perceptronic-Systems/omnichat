@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from model_gateway import llm, initialize_tools
 import fastapi
 from fastapi import Response, FastAPI, Form, UploadFile, File, WebSocket, WebSocketDisconnect, Request, Header, Depends, HTTPException
@@ -55,10 +56,29 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 sessions = {}
 
+# Comma-separated list of allowed frontend origins, e.g.
+# "https://demo.example.com,https://my-other-deploy.example.com".
+# Deliberately NOT defaulting to "*" -- this app supports self-hosters
+# pointing an arbitrary frontend at an arbitrary backend via `apiBase`, so
+# a single hardcoded origin would break that for everyone else. But
+# defaulting all the way open is exactly the CORS gap flagged earlier.
+# Each deployment (this public demo included) sets its own real origin(s)
+# here; if nothing is set, the safe default is "allow nothing" rather
+# than "allow everything."
+_allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
+if not ALLOWED_ORIGINS:
+    print("[WARN] ALLOWED_ORIGINS is not set -- no cross-origin frontend will be able to use this API "
+          "until it's configured (comma-separated list of allowed origins).", flush=True)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    # Not needed anymore now that auth is a manually-attached Authorization
+    # header rather than a cookie -- allow_credentials specifically governs
+    # browser-managed credentials (cookies, HTTP auth, client certs), which
+    # this app no longer relies on for cross-origin requests.
+    allow_credentials=False,
     allow_methods=["*"], 
     allow_headers=["*"],
 )
