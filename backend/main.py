@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import tomllib
 from model_gateway import llm, initialize_tools
 import fastapi
 from fastapi import Response, FastAPI, Form, UploadFile, File, WebSocket, WebSocketDisconnect, Request, Header, Depends, HTTPException
@@ -56,20 +57,31 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 sessions = {}
 
-# Comma-separated list of allowed frontend origins, e.g.
-# "https://demo.example.com,https://my-other-deploy.example.com".
+# [server] allowed_origins in /etc/omnichat/config.toml, as a native TOML
+# array. Same file and pattern model_gateway.py (ollama host/model) and
+# web_search.py (searxng URL) already use for deployment-specific
+# settings, so this doesn't introduce a second, separate configuration
+# mechanism just for CORS.
+#
 # Deliberately NOT defaulting to "*" -- this app supports self-hosters
 # pointing an arbitrary frontend at an arbitrary backend via `apiBase`, so
-# a single hardcoded origin would break that for everyone else. But
-# defaulting all the way open is exactly the CORS gap flagged earlier.
-# Each deployment (this public demo included) sets its own real origin(s)
-# here; if nothing is set, the safe default is "allow nothing" rather
-# than "allow everything."
-_allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-ALLOWED_ORIGINS = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
+# a single hardcoded origin would break that for everyone else. If
+# nothing is configured, the safe default is "allow nothing" rather than
+# "allow everything."
+ALLOWED_ORIGINS = []
+_config_path = os.path.expanduser("/etc/omnichat/config.toml")
+if os.path.exists(_config_path):
+    with open(_config_path, 'rb') as f:
+        _config = tomllib.load(f)
+    try:
+        ALLOWED_ORIGINS = _config['server']['allowed_origins']
+    except Exception as e:
+        print("Missing config attribute.")
+        print(e)
+
 if not ALLOWED_ORIGINS:
-    print("[WARN] ALLOWED_ORIGINS is not set -- no cross-origin frontend will be able to use this API "
-          "until it's configured (comma-separated list of allowed origins).", flush=True)
+    print("[WARN] server.allowed_origins is not set in /etc/omnichat/config.toml -- no cross-origin "
+          "frontend will be able to use this API until it's configured.", flush=True)
 
 app.add_middleware(
     CORSMiddleware,
