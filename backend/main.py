@@ -2,7 +2,7 @@
 
 from model_gateway import llm, initialize_tools
 import fastapi
-from fastapi import Response, FastAPI, Form, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import Response, FastAPI, Form, UploadFile, File, WebSocket, WebSocketDisconnect, Request, Header, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -22,6 +22,7 @@ from mcp_server import (
 )
 import speech_to_text
 import text_to_speech
+import session_manager
 
 atexit.register(cleanup_all_containers)
 
@@ -67,6 +68,36 @@ def get_status():
     return "Running"
 
 
+async def require_session(authorization: str = Header(None)) -> str:
+    """FastAPI dependency for every endpoint that needs an authenticated
+    session. Extracts a bearer token from the Authorization header and
+    validates it against session_manager's own registry -- a token that
+    was never actually issued by THIS server (made up, guessed, reused
+    from somewhere else) is rejected outright, unlike the old scheme where
+    any client-supplied integer worked simply by being used as a dict key."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
+    token = authorization[len("Bearer "):].strip()
+    if not session_manager.touch_and_validate(token):
+        raise HTTPException(status_code=401, detail="Invalid or expired session token")
+    return token
+
+
+@app.post("/session/create")
+async def create_session(request: Request):
+    """Mints a new session token. The frontend calls this lazily, only at
+    the moment of the first actual send (message, voice utterance, file
+    operation) -- never on page load -- so a visitor who never interacts
+    never costs the server a session or a sandbox container."""
+    client_ip = session_manager.get_client_ip(request)
+    token, error = session_manager.create_session(client_ip)
+    if error == "rate_limited":
+        return JSONResponse(status_code=429, content={"error": "Too many session attempts from this address. Please wait a moment and try again."})
+    if error == "at_capacity":
+        return JSONResponse(status_code=503, content={"error": "The server is at capacity right now. Please try again shortly."})
+    return {"token": token}
+
+
 @app.get("/voice/status")
 def get_voice_status():
     return {
@@ -76,16 +107,16 @@ def get_voice_status():
     }
 
 @app.get("/files/list")
-def list_container_files(session_id: int, path: str = "/"):
-    result = fm_list_directory(str(session_id), path)
+def list_container_files(path: str = "/", token: str = Depends(require_session)):
+    result = fm_list_directory(token, path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
 
 
 @app.get("/files/read")
-def read_container_file(session_id: int, path: str):
-    data, meta = fm_read_file(str(session_id), path)
+def read_container_file(path: str, token: str = Depends(require_session)):
+    data, meta = fm_read_file(token, path)
     if data is None:
         return JSONResponse(status_code=404, content=meta)
     try:
@@ -96,8 +127,8 @@ def read_container_file(session_id: int, path: str):
 
 
 @app.get("/files/download")
-def download_container_file(session_id: int, path: str):
-    data, meta = fm_read_file(str(session_id), path, max_bytes=200_000_000)
+def download_container_file(path: str, token: str = Depends(require_session)):
+    data, meta = fm_read_file(token, path, max_bytes=200_000_000)
     if data is None:
         return JSONResponse(status_code=404, content=meta)
     return Response(
@@ -108,34 +139,47 @@ def download_container_file(session_id: int, path: str):
 
 
 @app.post("/files/upload")
-async def upload_container_file(session_id: int = Form(...), path: str = Form(...), file: UploadFile = File(...)):
+async def upload_container_file(path: str = Form(...), file: UploadFile = File(...), token: str = Depends(require_session)):
     content = await file.read()
     target = path.rstrip("/") + "/" + file.filename
-    ok = fm_write_file(str(session_id), target, content)
+    ok = fm_write_file(token, target, content)
     if not ok:
         return JSONResponse(status_code=500, content={"error": "Upload failed"})
     return {"success": True, "path": target}
 
 
 @app.delete("/files/delete")
-def delete_container_file(session_id: int, path: str):
-    result = fm_delete_path(str(session_id), path)
+def delete_container_file(path: str, token: str = Depends(require_session)):
+    result = fm_delete_path(token, path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
 
 
 @app.post("/files/mkdir")
-def make_container_directory(session_id: int = Form(...), path: str = Form(...)):
-    result = fm_make_directory(str(session_id), path)
+def make_container_directory(path: str = Form(...), token: str = Depends(require_session)):
+    result = fm_make_directory(token, path)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
     return result
 
 
 @app.websocket("/ws/transcribe")
-async def websocket_transcribe(websocket: WebSocket):
+async def websocket_transcribe(websocket: WebSocket, token: str = None):
     await websocket.accept()
+
+    # Browsers' native WebSocket API can't set custom headers, only what's
+    # in the URL -- so unlike every other endpoint (Authorization header),
+    # this one has to take the token as a query param. That does mean it
+    # can end up in server access logs; worth excluding this path's query
+    # string from nginx logging if that matters for your deployment.
+    if not session_manager.touch_and_validate(token):
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "message": "Missing or invalid session token."
+        }))
+        await websocket.close()
+        return
 
     if not speech_to_text.is_ready():
         await websocket.send_text(json.dumps({
@@ -339,12 +383,12 @@ async def generator_wrapper(model, prompt: str, files: List[UploadFile], want_au
 
 @app.post("/generate")
 async def generate(
-    id: int = Form(...),
     prompt: str = Form(default=""),
     files: Optional[List[UploadFile]] = File(default=None),
     tts: bool = Form(default=False),
+    token: str = Depends(require_session),
 ):
-    print(f"Fetching model for session: {id}...")
+    print(f"Fetching model for session: {token[:8]}...")
 
     valid_files = []
     if files:
@@ -353,10 +397,10 @@ async def generate(
                 content = await file.read()
                 valid_files.append((file.filename, content))
 
-    if not sessions.get(id):
-        sessions[id] = llm('Omnichat', session_id=id)
+    if not sessions.get(token):
+        sessions[token] = llm('Omnichat', session_id=token)
 
-    model = sessions[id]
+    model = sessions[token]
 
     stream = generator_wrapper(model, prompt, valid_files, want_audio=tts)
     response = StreamingResponse(

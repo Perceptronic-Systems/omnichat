@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { authFetch } from '../api.jsx';
 
 function formatSize(bytes) {
   if (!bytes) return "0 B";
@@ -50,7 +51,7 @@ function breadcrumbParts(path) {
   return rel.split("/").filter(Boolean);
 }
 
-export default function Files({ apiBase, sessionId = 0 }) { 
+export default function Files({ apiBase }) { 
   const [path, setPath] = useState(WORKSPACE_ROOT);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,7 +68,7 @@ export default function Files({ apiBase, sessionId = 0 }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}files/list?session_id=${sessionId}&path=${encodeURIComponent(targetPath)}`);
+      const res = await authFetch(apiBase, `files/list?path=${encodeURIComponent(targetPath)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setEntries(data.entries || []);
@@ -77,7 +78,7 @@ export default function Files({ apiBase, sessionId = 0 }) {
     } finally {
       setLoading(false);
     }
-  }, [apiBase, browserMode, sessionId]);
+  }, [apiBase, browserMode]);
 
   useEffect(() => { load(path); }, [path, load]);
 
@@ -87,7 +88,7 @@ export default function Files({ apiBase, sessionId = 0 }) {
     setPreviewLoading(true);
     setPreview({ name: entry.name, path: fullPath });
     try {
-      const res = await fetch(`${apiBase}files/read?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`);
+      const res = await authFetch(apiBase, `files/read?path=${encodeURIComponent(fullPath)}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setPreview({ name: entry.name, path: fullPath, ...data });
@@ -96,18 +97,32 @@ export default function Files({ apiBase, sessionId = 0 }) {
     } finally {
       setPreviewLoading(false);
     }
-  }, [apiBase, path, sessionId]);
+  }, [apiBase, path]);
 
-  const downloadEntry = useCallback((entry) => {
+  const downloadEntry = useCallback(async (entry) => {
     const fullPath = joinPath(path, entry.name);
-    window.open(`${apiBase}files/download?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`, "_blank");
-  }, [apiBase, path, sessionId]);
+    try {
+      const res = await authFetch(apiBase, `files/download?path=${encodeURIComponent(fullPath)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entry.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`Could not download "${entry.name}": ${e.message}`);
+    }
+  }, [apiBase, path]);
 
   const deleteEntry = useCallback(async (entry) => {
     const fullPath = joinPath(path, entry.name);
     if (!window.confirm(`Delete "${entry.name}"? This cannot be undone.`)) return;
     try {
-      const res = await fetch(`${apiBase}files/delete?session_id=${sessionId}&path=${encodeURIComponent(fullPath)}`, { method: "DELETE" });
+      const res = await authFetch(apiBase, `files/delete?path=${encodeURIComponent(fullPath)}`, { method: "DELETE" });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       load(path);
@@ -115,34 +130,32 @@ export default function Files({ apiBase, sessionId = 0 }) {
     } catch (e) {
       alert(`Could not delete: ${e.message}`);
     }
-  }, [apiBase, path, load, preview, sessionId]);
+  }, [apiBase, path, load, preview]);
 
   const makeFolder = useCallback(async () => {
     const name = window.prompt("New folder name:");
     if (!name) return;
     try {
       const form = new FormData();
-      form.append("session_id", sessionId);
       form.append("path", joinPath(path, name));
-      const res = await fetch(`${apiBase}files/mkdir`, { method: "POST", body: form });
+      const res = await authFetch(apiBase, "files/mkdir", { method: "POST", body: form });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       load(path);
     } catch (e) {
       alert(`Could not create folder: ${e.message}`);
     }
-  }, [apiBase, path, load, sessionId]);
+  }, [apiBase, path, load]);
 
   const handleUpload = useCallback(async (e) => {
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
     for (const file of picked) {
       const form = new FormData();
-      form.append("session_id", sessionId);
       form.append("path", path);
       form.append("file", file);
       try {
-        const res = await fetch(`${apiBase}files/upload`, { method: "POST", body: form });
+        const res = await authFetch(apiBase, "files/upload", { method: "POST", body: form });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
       } catch (err) {
@@ -150,7 +163,7 @@ export default function Files({ apiBase, sessionId = 0 }) {
       }
     }
     load(path);
-  }, [apiBase, path, load, sessionId]);
+  }, [apiBase, path, load]);
 
   const crumbs = breadcrumbParts(path);
 

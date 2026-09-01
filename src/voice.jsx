@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getSessionToken } from './api.jsx';
 
 // ─── Voice input hook ──────────────────────────────────────────────────────────
 //
@@ -35,7 +36,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // by audio-worklet-processor.js. That same worklet also posts VAD events
 // (JSON, not binary) when alwaysListening is on.
 
-function toWsUrl(apiBase) {
+function toWsUrl(apiBase, token) {
   if (!apiBase || apiBase === 'browser') return null;
   // Deliberately built from the origin only, NOT from apiBase's full path.
   // apiBase typically points at an /api/ prefix (e.g. behind a reverse
@@ -51,6 +52,11 @@ function toWsUrl(apiBase) {
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.pathname = '/ws/transcribe';
     url.search = '';
+    // Browsers' native WebSocket API can't set custom headers on the
+    // handshake -- the query string is the only thing client JS can
+    // control, so the session token has to ride along here rather than
+    // as an Authorization header like every other authenticated request.
+    if (token) url.searchParams.set('token', token);
     return url.toString();
   } catch {
     return null;
@@ -145,7 +151,16 @@ export function useVoiceInput({ apiBase, onFinalTranscript, onAudioChunk, onSpee
   const startRecording = useCallback(async () => {
     setError(null);
 
-    const wsUrl = toWsUrl(apiBase);
+    let token;
+    try {
+      token = await getSessionToken(apiBase);
+    } catch (err) {
+      setError(`Could not start a session: ${err.message}`);
+      setVoiceState('error');
+      return;
+    }
+
+    const wsUrl = toWsUrl(apiBase, token);
     if (!wsUrl) {
       setError('Voice input requires a server connection (not available in local browser mode).');
       setVoiceState('error');
@@ -168,14 +183,14 @@ export function useVoiceInput({ apiBase, onFinalTranscript, onAudioChunk, onSpee
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       try {
-        await audioContext.audioWorklet.addModule('audio-worklet-processor.js');
+        await audioContext.audioWorklet.addModule('/audio-worklet-processor.js');
       } catch (workletErr) {
         // Chrome collapses almost any addModule failure (404, wrong path,
         // syntax error in the file) into a generic
         // "AbortError: The operation was aborted." -- surface something
         // actually actionable instead.
         throw new Error(
-          'Failed to load audio-worklet-processor.js. Check that the file ' +
+          'Failed to load /audio-worklet-processor.js. Check that the file ' +
           'is served as a static asset (e.g. in your public/ folder) and ' +
           `check the Network tab for the real error. (${workletErr.name}: ${workletErr.message})`
         );

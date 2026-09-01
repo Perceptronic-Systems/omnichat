@@ -9,7 +9,6 @@ import { initApi, clearStoredApi } from './api.jsx';
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
-const SESSION_ID = Math.floor(Math.random() * 100_000_000);
 export let activePage = 'chat';
 
 export default function App() {
@@ -49,22 +48,20 @@ export default function App() {
       case "chat":
         return (
           <Chat
-            SESSION_ID={SESSION_ID}
             messages={messages}
             setMessages={setMessages}
             setToolCalls={setToolCalls}
-            apiBase={apiBase}              // <-- new
+            apiBase={apiBase}
           />
         );
       case "tools":
         return <Tools toolCalls={toolCalls} />;
         break;
       case "files":
-        return <Files apiBase={apiBase} sessionId={SESSION_ID} />;
+        return <Files apiBase={apiBase} />;
       case "voice_chat":
         return <VoiceChat
           apiBase={apiBase}
-          SESSION_ID={SESSION_ID}
           setMessages={setMessages}
           setToolCalls={setToolCalls}
          />;
