@@ -108,6 +108,42 @@ class llm():
 
         self.local_client = ollama.AsyncClient(host=api, timeout=OLLAMA_TIMEOUT_SECONDS)
 
+    def _message_size(self, message):
+        """Estimate a message's context cost in tokens before sending it."""
+        content = message.get('content', '')
+        size = len(content)
+        # Images and tool-call metadata also consume context.
+        size += len(message.get('images', [])) * 2000
+        for tool_call in message.get('tool_calls', []):
+            size += len(str(tool_call))
+        return max(1, (size + 3) // 4)
+
+    def _trim_context(self):
+        """Keep the system prompt and newest messages within the input budget."""
+        context_limit = 50000
+        generation_reserve = 8192
+        budget = context_limit - generation_reserve
+
+        if not self.ollama_messages:
+            return
+
+        system_message = self.ollama_messages[0]
+        system_tokens = self._message_size(system_message)
+        if system_tokens >= budget:
+            # The original/system prompt is mandatory and must never be removed.
+            return
+
+        kept = []
+        used = system_tokens
+        for message in reversed(self.ollama_messages[1:]):
+            cost = self._message_size(message)
+            if used + cost > budget:
+                break
+            kept.append(message)
+            used += cost
+
+        self.ollama_messages = [system_message] + list(reversed(kept))
+
     def regenerate_prompt(self, tts = False):
         for i, message in enumerate(self.ollama_messages):
             if message.get('role', '') == 'system':
@@ -152,8 +188,10 @@ class llm():
             message_payload['content'] += f"\n\n{user_prompt}"
             self.ollama_messages.append(message_payload)
 
-        if len(self.ollama_messages) > self.max_messages + 1:
-            self.ollama_messages = [self.ollama_messages[0]] + self.ollama_messages[-self.max_messages:]
+        # Trim by estimated context size rather than a fixed message count.
+        # Short messages can accumulate, while large messages cause older
+        # context to be discarded so the model retains room to answer.
+        self._trim_context()
         self.regenerate_prompt(tts)
 
         status = 'Thinking'
@@ -167,12 +205,12 @@ class llm():
                     messages=self.ollama_messages,
                     tools=tools_list,
                     stream=True,
-                    options={"num_ctx": 32768},
+                    options={"num_ctx": 50000},
                     keep_alive=-1,
                     think=False,
                 )
             except TypeError:
-                print("[OLLAMA] This ollama client version doesn't support think=False; continuing without it.")
+                print("[OLLAMA] This ollama cl32768ient version doesn't support think=False; continuing without it.")
                 stream = await self.local_client.chat(
                     model=self.model,
                     messages=self.ollama_messages,

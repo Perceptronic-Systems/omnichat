@@ -1,7 +1,7 @@
 // audio-worklet-processor.js
-// Must be served as a static file at /audio-worklet-processor.js (place it
+// Must be served as a static file at audio-worklet-processor.js (place it
 // in the frontend's public/ directory) -- it's loaded via
-// audioContext.audioWorklet.addModule('/audio-worklet-processor.js') and
+// audioContext.audioWorklet.addModule('audio-worklet-processor.js') and
 // runs on the dedicated audio rendering thread, not the main thread.
 //
 // Job: take mic input at whatever native sample rate the AudioContext is
